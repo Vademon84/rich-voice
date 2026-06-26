@@ -711,7 +711,20 @@ const activeAudioPlayers = new Map();
 function broadcastAudioControl(fileName, action) {
     console.log(`🎮 Управление аудио: ${action} для ${fileName}`);
     
-    // Отправляем всем, включая себя
+    // Сначала запускаем у себя
+    const audioElements = document.querySelectorAll('audio');
+    audioElements.forEach(audio => {
+        if (audio.src && audio.src.includes(fileName)) {
+            console.log(`▶️ Запускаю у себя: ${action}`);
+            if (action === 'play') {
+                audio.play().catch(err => console.error('Ошибка воспроизведения:', err));
+            } else if (action === 'pause') {
+                audio.pause();
+            }
+        }
+    });
+    
+    // Затем отправляем всем остальным
     socket.emit('audio_control', {
         fileName: fileName,
         action: action,
