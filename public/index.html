@@ -18,13 +18,109 @@
             display: flex;
             flex-direction: column;
         }
+        
+        /* Стили для форм авторизации */
+        .auth-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: #36393f;
+        }
+        .auth-box {
+            background: #2f3136;
+            padding: 40px;
+            border-radius: 10px;
+            width: 400px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+        .auth-box h2 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #fff;
+        }
+        .auth-box input {
+            width: 100%;
+            padding: 12px 15px;
+            margin-bottom: 15px;
+            border: none;
+            border-radius: 5px;
+            background: #40444b;
+            color: white;
+            font-size: 14px;
+        }
+        .auth-box input:focus {
+            outline: none;
+            background: #484b52;
+        }
+        .auth-box button {
+            width: 100%;
+            padding: 12px;
+            background: #00d26a;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        .auth-box button:hover {
+            background: #00b85c;
+        }
+        .auth-box .switch-link {
+            text-align: center;
+            color: #00d26a;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .auth-box .switch-link:hover {
+            text-decoration: underline;
+        }
+        .error-message {
+            color: #ed4245;
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+        
+        /* Стили для чата */
+        .chat-container {
+            display: none;
+            flex-direction: column;
+            height: 100vh;
+        }
         .header {
             background: #2f3136;
             padding: 15px 20px;
             border-bottom: 1px solid #202225;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         .header h1 {
             font-size: 20px;
+        }
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .username-display {
+            color: #00d26a;
+            font-weight: bold;
+        }
+        .logout-btn {
+            padding: 8px 15px;
+            background: #ed4245;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .logout-btn:hover {
+            background: #c03537;
         }
         .messages {
             flex: 1;
@@ -77,32 +173,148 @@
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>💬 RICH-VOICE - Общий чат</h1>
+    <!-- Форма авторизации -->
+    <div class="auth-container" id="authContainer">
+        <div class="auth-box">
+            <h2 id="authTitle">Вход в RICH-VOICE</h2>
+            <div class="error-message" id="errorMessage"></div>
+            <input type="text" id="usernameInput" placeholder="Имя пользователя" autocomplete="off">
+            <input type="password" id="passwordInput" placeholder="Пароль">
+            <button id="authButton" onclick="handleAuth()">Войти</button>
+            <div class="switch-link" id="switchLink" onclick="switchAuthMode()">Нет аккаунта? Зарегистрироваться</div>
+        </div>
     </div>
     
-    <div class="messages" id="messages"></div>
-    
-    <div class="input-area">
-        <input type="text" id="messageInput" placeholder="Введите сообщение..." autocomplete="off">
-        <button onclick="sendMessage()">Отправить</button>
+    <!-- Чат -->
+    <div class="chat-container" id="chatContainer">
+        <div class="header">
+            <h1>💬 RICH-VOICE - Общий чат</h1>
+            <div class="user-info">
+                <span class="username-display" id="currentUser"></span>
+                <button class="logout-btn" onclick="logout()">Выйти</button>
+            </div>
+        </div>
+        
+        <div class="messages" id="messages"></div>
+        
+        <div class="input-area">
+            <input type="text" id="messageInput" placeholder="Введите сообщение..." autocomplete="off">
+            <button onclick="sendMessage()">Отправить</button>
+        </div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        // Улучшенная конфигурация Socket.IO
-        const socket = io({
-            transports: ['websocket', 'polling'], // Пробуем сначала WebSocket, потом polling
-            reconnection: true,
-            reconnectionAttempts: 5,
-            reconnectionDelay: 1000
-        });
+        let currentUser = null;
+        let isLoginMode = true;
+        let socket = null;
         
+        const authContainer = document.getElementById('authContainer');
+        const chatContainer = document.getElementById('chatContainer');
+        const authTitle = document.getElementById('authTitle');
+        const authButton = document.getElementById('authButton');
+        const switchLink = document.getElementById('switchLink');
+        const errorMessage = document.getElementById('errorMessage');
+        const usernameInput = document.getElementById('usernameInput');
+        const passwordInput = document.getElementById('passwordInput');
         const messagesDiv = document.getElementById('messages');
         const messageInput = document.getElementById('messageInput');
+        const currentUserDisplay = document.getElementById('currentUser');
 
-        // При получении сообщения
-        socket.on('message', (data) => {
+        // Переключение между входом и регистрацией
+        function switchAuthMode() {
+            isLoginMode = !isLoginMode;
+            errorMessage.textContent = '';
+            
+            if (isLoginMode) {
+                authTitle.textContent = 'Вход в RICH-VOICE';
+                authButton.textContent = 'Войти';
+                switchLink.textContent = 'Нет аккаунта? Зарегистрироваться';
+            } else {
+                authTitle.textContent = 'Регистрация в RICH-VOICE';
+                authButton.textContent = 'Зарегистрироваться';
+                switchLink.textContent = 'Уже есть аккаунт? Войти';
+            }
+        }
+
+        // Обработка авторизации
+        async function handleAuth() {
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value;
+            
+            if (!username || !password) {
+                errorMessage.textContent = 'Заполните все поля';
+                return;
+            }
+            
+            const endpoint = isLoginMode ? '/api/login' : '/api/register';
+            
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentUser = data.username;
+                    showChat();
+                } else {
+                    errorMessage.textContent = data.error;
+                }
+            } catch (error) {
+                errorMessage.textContent = 'Ошибка подключения к серверу';
+                console.error(error);
+            }
+        }
+
+        // Показать чат
+        function showChat() {
+            authContainer.style.display = 'none';
+            chatContainer.style.display = 'flex';
+            currentUserDisplay.textContent = currentUser;
+            
+            // Подключаемся к Socket.IO
+            socket = io({
+                transports: ['websocket', 'polling'],
+                reconnection: true,
+                reconnectionAttempts: 5,
+                reconnectionDelay: 1000
+            });
+            
+            // Загружаем историю сообщений
+            loadMessages();
+            
+            // Слушаем новые сообщения
+            socket.on('message', (data) => {
+                displayMessage(data);
+            });
+        }
+
+        // Загрузка истории сообщений
+        async function loadMessages() {
+            try {
+                const response = await fetch('/api/messages');
+                const messages = await response.json();
+                
+                messagesDiv.innerHTML = '';
+                messages.forEach(msg => {
+                    displayMessage({
+                        username: msg.username,
+                        text: msg.text
+                    });
+                });
+            } catch (error) {
+                console.error('Ошибка загрузки сообщений:', error);
+            }
+        }
+
+        // Отображение сообщения
+        function displayMessage(data) {
             const messageDiv = document.createElement('div');
             messageDiv.className = 'message';
             messageDiv.innerHTML = `
@@ -111,25 +323,45 @@
             `;
             messagesDiv.appendChild(messageDiv);
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
-        });
+        }
 
         // Отправка сообщения
         function sendMessage() {
             const text = messageInput.value.trim();
-            if (text) {
-                socket.emit('message', {
-                    username: 'User_' + Math.floor(Math.random() * 1000),
+            if (text && currentUser && socket) {
+                const messageData = {
+                    username: currentUser,
                     text: text,
                     time: new Date().toISOString()
-                });
+                };
+                socket.emit('message', messageData);
                 messageInput.value = '';
             }
+        }
+
+        // Выход
+        function logout() {
+            if (socket) {
+                socket.disconnect();
+            }
+            currentUser = null;
+            chatContainer.style.display = 'none';
+            authContainer.style.display = 'flex';
+            usernameInput.value = '';
+            passwordInput.value = '';
+            errorMessage.textContent = '';
         }
 
         // Отправка по Enter
         messageInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 sendMessage();
+            }
+        });
+
+        passwordInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                handleAuth();
             }
         });
     </script>
