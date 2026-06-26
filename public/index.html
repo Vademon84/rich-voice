@@ -495,6 +495,19 @@
         console.log('🔄 Конвертирую в base64...');
         const base64 = await fileToBase64(file);
         console.log('✅ Base64 готов, длина:', base64.length);
+        
+        // Проверяем размер данных перед отправкой
+        const payloadSize = (JSON.stringify({
+            username: currentUser,
+            fileUrl: base64,
+            fileName: file.name
+        }).length / 1024 / 1024).toFixed(2);
+        console.log('📊 Размер данных для отправки:', payloadSize, 'MB');
+        
+        if (payloadSize > 10) {
+            console.warn('⚠️ Данные больше 10MB, может не пройти через Socket.IO');
+        }
+        
         console.log('📤 Отправляю на сервер...');
         
         socket.emit('audio_upload', {
@@ -607,7 +620,8 @@
                 transports: ['websocket', 'polling'],
                 reconnection: true,
                 reconnectionAttempts: 5,
-                reconnectionDelay: 1000
+                reconnectionDelay: 1000,
+                maxHttpBufferSize: 1e8 // 100MB
             });
             
             socket.emit('user_join', currentUser);
