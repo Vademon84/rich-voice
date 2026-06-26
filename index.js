@@ -23,15 +23,15 @@ const io = new Server(server, {
 });
 
 app.use(cors());
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(express.json({ limit: '100mb' }));
+app.use(express.urlencoded({ extended: true, limit: '100mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Настройка multer для загрузки файлов
 const storage = multer.memoryStorage();
 const upload = multer({ 
   storage: storage,
-  limits: { fileSize: 10 * 1024 * 1024 } // 10MB лимит
+  limits: { fileSize: 50 * 1024 * 1024 } // 50MB лимит
 });
 
 // Хранилище онлайн пользователей
