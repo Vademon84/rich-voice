@@ -5,6 +5,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
 const bcrypt = require('bcryptjs');
+const multer = require('multer');
 
 const User = require('./models/User');
 const Message = require('./models/Message');
@@ -22,11 +23,18 @@ const io = new Server(server, {
 });
 
 app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Хранилище онлайн пользователей (socketId -> username)
+// Настройка multer для загрузки файлов
+const storage = multer.memoryStorage();
+const upload = multer({ 
+  storage: storage,
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB лимит
+});
+
+// Хранилище онлайн пользователей
 const onlineUsers = new Map();
 
 // Главная страница
@@ -93,7 +101,7 @@ app.get('/api/messages', async (req, res) => {
     const messages = await Message.find().sort({ createdAt: -1 }).limit(50);
     res.json(messages.reverse());
   } catch (error) {
-    console.error('❌ Ошибка получения сообщений:', error);
+    console.error(' Ошибка получения сообщений:', error);
     res.status(500).json({ error: 'Ошибка получения сообщений' });
   }
 });
@@ -116,37 +124,31 @@ if (process.env.MONGODB_URI) {
 io.on('connection', (socket) => {
   console.log('👤 Новое соединение:', socket.id);
 
-  // Пользователь вошёл в чат
   socket.on('user_join', (username) => {
     console.log(`🟢 ${username} подключился`);
-    
-    // Добавляем в список онлайн
     onlineUsers.set(socket.id, username);
-    
-    // Отправляем всем обновлённый список онлайн
     io.emit('online_users', Array.from(onlineUsers.values()));
-    
-    // Уведомление всем о входе
     socket.broadcast.emit('system_message', {
       text: `${username} присоединился к чату`,
       type: 'join'
     });
   });
 
-  // Пользователь отправил сообщение
+  // Текстовое сообщение
   socket.on('message', async (data) => {
     console.log('📨 Сообщение:', data);
     
     try {
       const message = new Message({
         username: data.username,
+        type: 'text',
         text: data.text
       });
       await message.save();
       
-      // Рассылаем всем с датой из базы
       io.emit('message', {
         username: data.username,
+        type: 'text',
         text: data.text,
         createdAt: message.createdAt
       });
@@ -155,17 +157,68 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Пользователь отключился
+  // Загрузка изображения
+  socket.on('image_upload', async (data) => {
+    console.log('🖼️ Загрузка изображения от:', data.username);
+    
+    try {
+      const message = new Message({
+        username: data.username,
+        type: 'image',
+        fileUrl: data.fileUrl,
+        fileName: data.fileName
+      });
+      await message.save();
+      
+      io.emit('message', {
+        username: data.username,
+        type: 'image',
+        fileUrl: data.fileUrl,
+        fileName: data.fileName,
+        createdAt: message.createdAt
+      });
+    } catch (error) {
+      console.error('❌ Ошибка сохранения изображения:', error);
+    }
+  });
+
+  // Загрузка аудио
+  socket.on('audio_upload', async (data) => {
+    console.log('🎵 Загрузка аудио от:', data.username);
+    
+    try {
+      const message = new Message({
+        username: data.username,
+        type: 'audio',
+        fileUrl: data.fileUrl,
+        fileName: data.fileName
+      });
+      await message.save();
+      
+      io.emit('message', {
+        username: data.username,
+        type: 'audio',
+        fileUrl: data.fileUrl,
+        fileName: data.fileName,
+        createdAt: message.createdAt
+      });
+    } catch (error) {
+      console.error('❌ Ошибка сохранения аудио:', error);
+    }
+  });
+
+  // Управление воспроизведением аудио
+  socket.on('audio_control', (data) => {
+    console.log('🎮 Управление аудио:', data);
+    socket.broadcast.emit('audio_control', data);
+  });
+
   socket.on('disconnect', () => {
     const username = onlineUsers.get(socket.id);
     if (username) {
       console.log(`🔴 ${username} отключился`);
       onlineUsers.delete(socket.id);
-      
-      // Отправляем всем обновлённый список онлайн
       io.emit('online_users', Array.from(onlineUsers.values()));
-      
-      // Уведомление всем о выходе
       socket.broadcast.emit('system_message', {
         text: `${username} покинул чат`,
         type: 'leave'
@@ -176,5 +229,5 @@ io.on('connection', (socket) => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Сервер запущен на порту ${PORT}`);
+  console.log(` Сервер запущен на порту ${PORT}`);
 });

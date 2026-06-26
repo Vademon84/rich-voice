@@ -18,7 +18,6 @@
             overflow: hidden;
         }
         
-        /* Стили для форм авторизации */
         .auth-container {
             display: flex;
             justify-content: center;
@@ -83,14 +82,12 @@
             font-size: 14px;
         }
         
-        /* Стили для чата */
         .chat-wrapper {
             display: none;
             height: 100vh;
             flex-direction: row;
         }
         
-        /* Боковая панель с онлайн пользователями */
         .sidebar {
             width: 240px;
             background: #2f3136;
@@ -138,7 +135,6 @@
             font-size: 13px;
         }
         
-        /* Основная область чата */
         .chat-main {
             flex: 1;
             display: flex;
@@ -184,35 +180,67 @@
         }
         .message {
             background: #40444b;
-            padding: 10px 15px;
+            padding: 12px 15px;
             margin-bottom: 10px;
             border-radius: 5px;
+        }
+        .message-header {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            gap: 15px;
-        }
-        .message-content {
-            flex: 1;
+            margin-bottom: 8px;
         }
         .message .username {
             color: #00d26a;
             font-weight: bold;
-            margin-bottom: 5px;
-        }
-        .message-text {
-            word-wrap: break-word;
-            line-height: 1.4;
         }
         .message-time {
             color: #72767d;
             font-size: 11px;
             white-space: nowrap;
-            min-width: 90px;
-            text-align: right;
+        }
+        .message-content {
+            word-wrap: break-word;
+            line-height: 1.4;
+        }
+        .message-image {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 5px;
+            margin-top: 8px;
+            cursor: pointer;
+        }
+        .message-audio {
+            width: 100%;
+            margin-top: 8px;
+        }
+        .audio-player {
+            background: #2f3136;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 8px;
+        }
+        .audio-player audio {
+            width: 100%;
+        }
+        .audio-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 8px;
+        }
+        .audio-controls button {
+            padding: 5px 10px;
+            background: #00d26a;
+            border: none;
+            border-radius: 3px;
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .audio-controls button:hover {
+            background: #00b85c;
         }
         
-        /* Системные сообщения */
         .system-message {
             text-align: center;
             padding: 8px;
@@ -230,11 +258,31 @@
         
         .input-area {
             background: #2f3136;
-            padding: 20px;
+            padding: 15px 20px;
+            border-top: 1px solid #202225;
+        }
+        .input-toolbar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .toolbar-btn {
+            padding: 8px 12px;
+            background: #40444b;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .toolbar-btn:hover {
+            background: #484b52;
+        }
+        .input-row {
             display: flex;
             gap: 10px;
         }
-        .input-area input {
+        .input-row input {
             flex: 1;
             padding: 12px 15px;
             border: none;
@@ -243,11 +291,11 @@
             color: white;
             font-size: 14px;
         }
-        .input-area input:focus {
+        .input-row input:focus {
             outline: none;
             background: #484b52;
         }
-        .input-area button {
+        .input-row button {
             padding: 12px 25px;
             background: #00d26a;
             border: none;
@@ -256,13 +304,48 @@
             font-weight: bold;
             cursor: pointer;
         }
-        .input-area button:hover {
+        .input-row button:hover {
             background: #00b85c;
+        }
+        
+        /* Панель эмодзи */
+        .emoji-panel {
+            display: none;
+            background: #2f3136;
+            border: 1px solid #202225;
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .emoji-panel.show {
+            display: block;
+        }
+        .emoji-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 5px;
+        }
+        .emoji-btn {
+            padding: 8px;
+            background: #40444b;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 20px;
+        }
+        .emoji-btn:hover {
+            background: #484b52;
+        }
+        
+        /* Скрытые input для файлов */
+        .file-input {
+            display: none;
         }
     </style>
 </head>
 <body>
-    <!-- Форма авторизации -->
     <div class="auth-container" id="authContainer">
         <div class="auth-box">
             <h2 id="authTitle">Вход в RICH-VOICE</h2>
@@ -274,9 +357,7 @@
         </div>
     </div>
     
-    <!-- Чат -->
     <div class="chat-wrapper" id="chatContainer">
-        <!-- Боковая панель с онлайн пользователями -->
         <div class="sidebar">
             <div class="sidebar-header">
                 <h2>🟢 В сети</h2>
@@ -285,7 +366,6 @@
             <div class="online-count" id="onlineCount">Онлайн: 0</div>
         </div>
         
-        <!-- Основная область чата -->
         <div class="chat-main">
             <div class="header">
                 <h1>💬 RICH-VOICE - Общий чат</h1>
@@ -298,8 +378,23 @@
             <div class="messages" id="messages"></div>
             
             <div class="input-area">
-                <input type="text" id="messageInput" placeholder="Введите сообщение..." autocomplete="off">
-                <button onclick="sendMessage()">Отправить</button>
+                <div class="emoji-panel" id="emojiPanel">
+                    <div class="emoji-grid" id="emojiGrid"></div>
+                </div>
+                
+                <div class="input-toolbar">
+                    <button class="toolbar-btn" onclick="toggleEmojiPanel()">😊 Эмодзи</button>
+                    <button class="toolbar-btn" onclick="document.getElementById('imageInput').click()">️ Картинка</button>
+                    <button class="toolbar-btn" onclick="document.getElementById('audioInput').click()">🎵 Музыка</button>
+                </div>
+                
+                <div class="input-row">
+                    <input type="text" id="messageInput" placeholder="Введите сообщение..." autocomplete="off">
+                    <button onclick="sendMessage()">Отправить</button>
+                </div>
+                
+                <input type="file" id="imageInput" class="file-input" accept="image/*" onchange="handleImageUpload(event)">
+                <input type="file" id="audioInput" class="file-input" accept="audio/*" onchange="handleAudioUpload(event)">
             </div>
         </div>
     </div>
@@ -323,17 +418,101 @@
         const currentUserDisplay = document.getElementById('currentUser');
         const onlineList = document.getElementById('onlineList');
         const onlineCount = document.getElementById('onlineCount');
+        const emojiPanel = document.getElementById('emojiPanel');
+        const emojiGrid = document.getElementById('emojiGrid');
 
-        // Проверка сохранённой сессии при загрузке
+        // Популярные эмодзи
+        const emojis = ['😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃', '😉', '😊', '😇', '🥰', '😍', '', '😘', '😗', '😚', '😙', '😋', '😛', '😜', '', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐', '😑', '😶', '😏', '😒', '🙄', '😬', '🤥', '😌', '😔', '😪', '🤤', '😴', '😷', '', '🤕', '🤢', '🤮', '', '🥶', '🥴', '😵', '🤯', '', '🥳', '😎', '🤓', '🧐', '😕', '😟', '🙁', '☹️', '😮', '😯', '😲', '😳', '🥺', '😦', '😧', '😨', '😰', '😥', '😢', '😭', '😱', '😖', '😣', '😞', '😓', '😩', '😫', '🥱', '😤', '😡', '😠', '🤬', '😈', '', '💀', '️', '💩', '', '👹', '', '👻', '👽', '👾', '🤖', '😺', '😸', '', '😻', '😼', '', '🙀', '😿', '😾', '❤️', '🧡', '💛', '💚', '', '💜', '', '🤍', '🤎', '💔', '❣️', '', '💞', '💓', '', '💖', '💘', '', '💟', '☮️', '✝️', '☪️', '️', '☸️', '✡️', '🔯', '🕎', '☯️', '☦️', '🛐', '⛎', '♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '♐', '♑', '♒', '♓', '🆔', '⚛️', '🉑', '️', '☣️', '📴', '📳', '🈶', '🈚', '🈸', '', '🈷️', '✴️', '🆚', '', '🉐', '️', '㊗️', '', '🈵', '', '🈲', '🅰️', '🅱️', '', '🆑', '️', '🆘', '❌', '⭕', '', '⛔', '', '🚫', '💯', '💢', '♨️', '', '🚯', '', '🚱', '🔞', '📵', '🚭', '❗', '❕', '❓', '❔', '‼️', '️', '🔅', '', '〽️', '️', '🚸', '🔱', '⚜️', '🔰', '♻️', '✅', '', '⭐', '', '✨', '⚡', '☄️', '💥', '🔥', '🌪️', '🌈', '☀️', '🌤️', '⛅', '️', '☁️', '🌦️', '🌧️', '⛈️', '🌩️', '🌨️', '❄️', '☃️', '⛄', '🌬️', '', '💧', '💦', '', '☂️', '🌊'];
+
+        // Инициализация панели эмодзи
+        function initEmojiPanel() {
+            emojis.forEach(emoji => {
+                const btn = document.createElement('button');
+                btn.className = 'emoji-btn';
+                btn.textContent = emoji;
+                btn.onclick = () => insertEmoji(emoji);
+                emojiGrid.appendChild(btn);
+            });
+        }
+
+        function toggleEmojiPanel() {
+            emojiPanel.classList.toggle('show');
+        }
+
+        function insertEmoji(emoji) {
+            messageInput.value += emoji;
+            messageInput.focus();
+        }
+
+        // Конвертация файла в base64
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = error => reject(error);
+            });
+        }
+
+        // Загрузка изображения
+        async function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            if (file.size > 5 * 1024 * 1024) {
+                alert('Файл слишком большой! Максимум 5MB');
+                return;
+            }
+            
+            try {
+                const base64 = await fileToBase64(file);
+                socket.emit('image_upload', {
+                    username: currentUser,
+                    fileUrl: base64,
+                    fileName: file.name
+                });
+            } catch (error) {
+                console.error('Ошибка загрузки изображения:', error);
+                alert('Ошибка загрузки изображения');
+            }
+            
+            event.target.value = '';
+        }
+
+        // Загрузка аудио
+        async function handleAudioUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            if (file.size > 10 * 1024 * 1024) {
+                alert('Файл слишком большой! Максимум 10MB');
+                return;
+            }
+            
+            try {
+                const base64 = await fileToBase64(file);
+                socket.emit('audio_upload', {
+                    username: currentUser,
+                    fileUrl: base64,
+                    fileName: file.name
+                });
+            } catch (error) {
+                console.error('Ошибка загрузки аудио:', error);
+                alert('Ошибка загрузки аудио');
+            }
+            
+            event.target.value = '';
+        }
+
         window.addEventListener('DOMContentLoaded', () => {
             const savedUser = localStorage.getItem('richvoice_user');
             if (savedUser) {
                 currentUser = savedUser;
                 showChat();
             }
+            initEmojiPanel();
         });
 
-        // Форматирование даты и времени
         function formatDateTime(dateString) {
             const date = new Date(dateString);
             const today = new Date();
@@ -361,7 +540,6 @@
             }
         }
 
-        // Переключение между входом и регистрацией
         function switchAuthMode() {
             isLoginMode = !isLoginMode;
             errorMessage.textContent = '';
@@ -377,7 +555,6 @@
             }
         }
 
-        // Обработка авторизации
         async function handleAuth() {
             const username = usernameInput.value.trim();
             const password = passwordInput.value;
@@ -401,7 +578,6 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    // Сохраняем в localStorage
                     localStorage.setItem('richvoice_user', data.username);
                     currentUser = data.username;
                     showChat();
@@ -414,13 +590,11 @@
             }
         }
 
-        // Показать чат
         function showChat() {
             authContainer.style.display = 'none';
             chatContainer.style.display = 'flex';
             currentUserDisplay.textContent = currentUser;
             
-            // Подключаемся к Socket.IO
             socket = io({
                 transports: ['websocket', 'polling'],
                 reconnection: true,
@@ -428,29 +602,26 @@
                 reconnectionDelay: 1000
             });
             
-            // Уведомляем сервер о входе
             socket.emit('user_join', currentUser);
-            
-            // Загружаем историю сообщений
             loadMessages();
             
-            // Слушаем новые сообщения
             socket.on('message', (data) => {
                 displayMessage(data);
             });
             
-            // Слушаем системные сообщения
             socket.on('system_message', (data) => {
                 displaySystemMessage(data);
             });
             
-            // Слушаем список онлайн пользователей
             socket.on('online_users', (users) => {
                 updateOnlineList(users);
             });
+            
+            socket.on('audio_control', (data) => {
+                handleRemoteAudioControl(data);
+            });
         }
 
-        // Обновление списка онлайн
         function updateOnlineList(users) {
             onlineList.innerHTML = '';
             users.forEach(user => {
@@ -465,7 +636,6 @@
             onlineCount.textContent = `Онлайн: ${users.length}`;
         }
 
-        // Загрузка истории сообщений
         async function loadMessages() {
             try {
                 const response = await fetch('/api/messages');
@@ -475,7 +645,10 @@
                 messages.forEach(msg => {
                     displayMessage({
                         username: msg.username,
+                        type: msg.type,
                         text: msg.text,
+                        fileUrl: msg.fileUrl,
+                        fileName: msg.fileName,
                         createdAt: msg.createdAt
                     });
                 });
@@ -484,25 +657,78 @@
             }
         }
 
-        // Отображение сообщения
         function displayMessage(data) {
             const messageDiv = document.createElement('div');
             messageDiv.className = 'message';
             
             const time = data.createdAt ? formatDateTime(data.createdAt) : 'Только что';
             
+            let contentHtml = '';
+            
+            if (data.type === 'text') {
+                contentHtml = `<div class="message-content">${escapeHtml(data.text)}</div>`;
+            } else if (data.type === 'image') {
+                contentHtml = `
+                    <div class="message-content">🖼️ ${escapeHtml(data.fileName)}</div>
+                    <img src="${data.fileUrl}" class="message-image" onclick="window.open('${data.fileUrl}', '_blank')">
+                `;
+            } else if (data.type === 'audio') {
+                const audioId = 'audio_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                contentHtml = `
+                    <div class="message-content">🎵 ${escapeHtml(data.fileName)}</div>
+                    <div class="audio-player" id="${audioId}">
+                        <audio src="${data.fileUrl}" controls></audio>
+                        <div class="audio-controls">
+                            <button onclick="broadcastAudioControl('${audioId}', 'play')">▶️ Играть для всех</button>
+                            <button onclick="broadcastAudioControl('${audioId}', 'pause')">⏸️ Пауза для всех</button>
+                        </div>
+                    </div>
+                `;
+            }
+            
             messageDiv.innerHTML = `
-                <div class="message-content">
+                <div class="message-header">
                     <div class="username">${escapeHtml(data.username)}</div>
-                    <div class="message-text">${escapeHtml(data.text)}</div>
+                    <div class="message-time">${time}</div>
                 </div>
-                <div class="message-time">${time}</div>
+                ${contentHtml}
             `;
             messagesDiv.appendChild(messageDiv);
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
 
-        // Отображение системного сообщения
+        function broadcastAudioControl(audioId, action) {
+            const audioElement = document.querySelector(`#${audioId} audio`);
+            if (audioElement) {
+                if (action === 'play') {
+                    audioElement.play();
+                } else if (action === 'pause') {
+                    audioElement.pause();
+                }
+            }
+            
+            socket.emit('audio_control', {
+                audioId: audioId,
+                action: action,
+                username: currentUser
+            });
+        }
+
+        function handleRemoteAudioControl(data) {
+            // Находим аудио элемент по ID (упрощённо)
+            const audioPlayers = document.querySelectorAll('.audio-player');
+            audioPlayers.forEach(player => {
+                const audio = player.querySelector('audio');
+                if (audio && audio.src === data.audioSrc) {
+                    if (data.action === 'play') {
+                        audio.play();
+                    } else if (data.action === 'pause') {
+                        audio.pause();
+                    }
+                }
+            });
+        }
+
         function displaySystemMessage(data) {
             const messageDiv = document.createElement('div');
             messageDiv.className = 'system-message ' + (data.type || '');
@@ -511,27 +737,23 @@
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
 
-        // Экранирование HTML для безопасности
         function escapeHtml(text) {
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
         }
 
-        // Отправка сообщения
         function sendMessage() {
             const text = messageInput.value.trim();
             if (text && currentUser && socket) {
-                const messageData = {
+                socket.emit('message', {
                     username: currentUser,
                     text: text
-                };
-                socket.emit('message', messageData);
+                });
                 messageInput.value = '';
             }
         }
 
-        // Выход
         function logout() {
             if (socket) {
                 socket.disconnect();
@@ -545,7 +767,6 @@
             errorMessage.textContent = '';
         }
 
-        // Отправка по Enter
         messageInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 sendMessage();

@@ -5,9 +5,19 @@ const messageSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  text: {
+  type: {
     type: String,
-    required: true
+    enum: ['text', 'image', 'audio'],
+    default: 'text'
+  },
+  text: {
+    type: String
+  },
+  fileUrl: {
+    type: String
+  },
+  fileName: {
+    type: String
   },
   createdAt: {
     type: Date,
