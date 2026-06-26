@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RICH-VOICE</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #36393f;
+            color: white;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .header {
+            background: #2f3136;
+            padding: 15px 20px;
+            border-bottom: 1px solid #202225;
+        }
+        .header h1 {
+            font-size: 20px;
+        }
+        .messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #36393f;
+        }
+        .message {
+            background: #40444b;
+            padding: 10px 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+        }
+        .message .username {
+            color: #00d26a;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .input-area {
+            background: #2f3136;
+            padding: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        .input-area input {
+            flex: 1;
+            padding: 12px 15px;
+            border: none;
+            border-radius: 5px;
+            background: #40444b;
+            color: white;
+            font-size: 14px;
+        }
+        .input-area input:focus {
+            outline: none;
+            background: #484b52;
+        }
+        .input-area button {
+            padding: 12px 25px;
+            background: #00d26a;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .input-area button:hover {
+            background: #00b85c;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>💬 RICH-VOICE - Общий чат</h1>
+    </div>
+    
+    <div class="messages" id="messages"></div>
+    
+    <div class="input-area">
+        <input type="text" id="messageInput" placeholder="Введите сообщение..." autocomplete="off">
+        <button onclick="sendMessage()">Отправить</button>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const messagesDiv = document.getElementById('messages');
+        const messageInput = document.getElementById('messageInput');
+
+        // При получении сообщения
+        socket.on('message', (data) => {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message';
+            messageDiv.innerHTML = `
+                <div class="username">${data.username}</div>
+                <div>${data.text}</div>
+            `;
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        });
+
+        // Отправка сообщения
+        function sendMessage() {
+            const text = messageInput.value.trim();
+            if (text) {
+                socket.emit('message', {
+                    username: 'User_' + Math.floor(Math.random() * 1000),
+                    text: text,
+                    time: new Date().toISOString()
+                });
+                messageInput.value = '';
+            }
+        }
+
+        // Отправка по Enter
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>

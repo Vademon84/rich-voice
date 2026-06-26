@@ -1,0 +1,1 @@
+mongodb+srv://vadimne_db_user:<db_Dkrut590%40>@cluster0.mrqon2y.mongodb.net/?appName=Cluster0
