@@ -742,18 +742,26 @@ function handleRemoteAudioControl(data) {
         return;
     }
     
-    // Ищем все аудио с этим именем файла
+    // Ищем все аудио элементы
     const audioElements = document.querySelectorAll('audio');
+    console.log(`🔍 Найдено аудио плееров: ${audioElements.length}`);
+    
     let found = false;
     
-    audioElements.forEach(audio => {
-        // Проверяем, что это наше аудио (по src или data-атрибуту)
-        if (audio.src && audio.src.includes(data.fileName)) {
+    audioElements.forEach((audio, index) => {
+        const fileName = audio.getAttribute('data-filename');
+        console.log(`Плеер ${index}: data-filename="${fileName}"`);
+        
+        // Сравниваем имена файлов
+        if (fileName && fileName === data.fileName) {
             found = true;
-            console.log('▶️ Нашёл аудио плеер, выполняю:', data.action);
+            console.log(`✅ Нашёл плеер! Выполняю: ${data.action}`);
             
             if (data.action === 'play') {
-                audio.play().catch(err => console.error('Ошибка воспроизведения:', err));
+                audio.play().catch(err => {
+                    console.error('❌ Ошибка воспроизведения:', err);
+                    alert('Не удалось воспроизвести аудио. Попробуйте ещё раз.');
+                });
             } else if (data.action === 'pause') {
                 audio.pause();
             }
@@ -761,7 +769,11 @@ function handleRemoteAudioControl(data) {
     });
     
     if (!found) {
-        console.log('⚠️ Аудио плеер не найден для:', data.fileName);
+        console.log(`⚠️ Плеер не найден для файла: ${data.fileName}`);
+        console.log('Доступные файлы в плеерах:');
+        audioElements.forEach(audio => {
+            console.log('-', audio.getAttribute('data-filename'));
+        });
     }
 }
 
