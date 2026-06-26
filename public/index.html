@@ -90,7 +90,14 @@
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        const socket = io();
+        // Улучшенная конфигурация Socket.IO
+        const socket = io({
+            transports: ['websocket', 'polling'], // Пробуем сначала WebSocket, потом polling
+            reconnection: true,
+            reconnectionAttempts: 5,
+            reconnectionDelay: 1000
+        });
+        
         const messagesDiv = document.getElementById('messages');
         const messageInput = document.getElementById('messageInput');
 

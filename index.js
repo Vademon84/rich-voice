@@ -9,9 +9,13 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
-  }
+    origin: true, // Разрешаем все origins
+    methods: ["GET", "POST"],
+    credentials: true,
+    allowedHeaders: ["my-custom-header"]
+  },
+  pingTimeout: 60000,
+  pingInterval: 25000
 });
 
 app.use(cors());
