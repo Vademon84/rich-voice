@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RICH-VOICE</title>
+    <script src="https://upload-widget.cloudinary.com/global/all.js" type="text/javascript"></script>
     <style>
         * {
             margin: 0;
@@ -308,7 +309,6 @@
             background: #00b85c;
         }
         
-        /* Панель эмодзи */
         .emoji-panel {
             display: none;
             background: #2f3136;
@@ -339,7 +339,6 @@
             background: #484b52;
         }
         
-        /* Скрытые input для файлов */
         .file-input {
             display: none;
         }
@@ -384,7 +383,7 @@
                 
                 <div class="input-toolbar">
                     <button class="toolbar-btn" onclick="toggleEmojiPanel()">😊 Эмодзи</button>
-                    <button class="toolbar-btn" onclick="document.getElementById('imageInput').click()">️ Картинка</button>
+                    <button class="toolbar-btn" onclick="document.getElementById('imageInput').click()">🖼️ Картинка</button>
                     <button class="toolbar-btn" onclick="document.getElementById('audioInput').click()">🎵 Музыка</button>
                 </div>
                 
@@ -394,7 +393,7 @@
                 </div>
                 
                 <input type="file" id="imageInput" class="file-input" accept="image/*" onchange="handleImageUpload(event)">
-                <input type="file" id="audioInput" class="file-input" accept="audio/*" onchange="handleAudioUpload(event)">
+                <input type="file" id="audioInput" class="file-input" accept="audio/*,video/*" onchange="handleAudioUpload(event)">
             </div>
         </div>
     </div>
@@ -404,6 +403,8 @@
         let currentUser = null;
         let isLoginMode = true;
         let socket = null;
+        let audioUploadWidget = null;
+        let imageUploadWidget = null;
         
         const authContainer = document.getElementById('authContainer');
         const chatContainer = document.getElementById('chatContainer');
@@ -421,10 +422,8 @@
         const emojiPanel = document.getElementById('emojiPanel');
         const emojiGrid = document.getElementById('emojiGrid');
 
-        // Популярные эмодзи
-        const emojis = ['😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃', '😉', '😊', '😇', '🥰', '😍', '', '😘', '😗', '😚', '😙', '😋', '😛', '😜', '', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐', '😑', '😶', '😏', '😒', '🙄', '😬', '🤥', '😌', '😔', '😪', '🤤', '😴', '😷', '', '🤕', '🤢', '🤮', '', '🥶', '🥴', '😵', '🤯', '', '🥳', '😎', '🤓', '🧐', '😕', '😟', '🙁', '☹️', '😮', '😯', '😲', '😳', '🥺', '😦', '😧', '😨', '😰', '😥', '😢', '😭', '😱', '😖', '😣', '😞', '😓', '😩', '😫', '🥱', '😤', '😡', '😠', '🤬', '😈', '', '💀', '️', '💩', '', '👹', '', '👻', '👽', '👾', '🤖', '😺', '😸', '', '😻', '😼', '', '🙀', '😿', '😾', '❤️', '🧡', '💛', '💚', '', '💜', '', '🤍', '🤎', '💔', '❣️', '', '💞', '💓', '', '💖', '💘', '', '💟', '☮️', '✝️', '☪️', '️', '☸️', '✡️', '🔯', '🕎', '☯️', '☦️', '🛐', '⛎', '♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '♐', '♑', '♒', '♓', '🆔', '⚛️', '🉑', '️', '☣️', '📴', '📳', '🈶', '🈚', '🈸', '', '🈷️', '✴️', '🆚', '', '🉐', '️', '㊗️', '', '🈵', '', '🈲', '🅰️', '🅱️', '', '🆑', '️', '🆘', '❌', '⭕', '', '⛔', '', '🚫', '💯', '💢', '♨️', '', '🚯', '', '🚱', '🔞', '📵', '🚭', '❗', '❕', '❓', '❔', '‼️', '️', '🔅', '', '〽️', '️', '🚸', '🔱', '⚜️', '🔰', '♻️', '✅', '', '⭐', '', '✨', '⚡', '☄️', '💥', '🔥', '🌪️', '🌈', '☀️', '🌤️', '⛅', '️', '☁️', '🌦️', '🌧️', '⛈️', '🌩️', '🌨️', '❄️', '☃️', '⛄', '🌬️', '', '💧', '💦', '', '☂️', '🌊'];
+        const emojis = ['😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃', '😉', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😙', '😋', '😛', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '', '🤐', '🤨', '', '😑', '', '😏', '', '🙄', '😬', '🤥', '😌', '😔', '😪', '🤤', '😴', '😷', '🤕', '🤢', '🤮', '', '🥴', '😵', '🤯', '🥳', '😎', '🤓', '🧐', '😕', '😟', '🙁', '☹️', '😮', '😯', '😲', '😳', '🥺', '😦', '😧', '😨', '😰', '😥', '😢', '😭', '😱', '😖', '😣', '😞', '😓', '😩', '😫', '🥱', '', '😡', '', '🤬', '😈', '', '💀', '☠️', '💩', '🤡', '', '👺', '👻', '👽', '', '🤖', '😺', '', '😹', '', '😼', '', '🙀', '😿', '😾', '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔', '❣️', '💕', '💞', '💓', '💗', '💖', '💘', '💝', '💟', '☮️', '✝️', '☪️', '🕉️', '☸️', '✡️', '🔯', '🕎', '️', '☦️', '🛐', '⛎', '♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '♐', '♑', '♒', '♓', '🆔', '️', '', '☢️', '☣️', '📴', '', '🈶', '🈚', '🈸', '🈺', '🈷️', '✴️', '🆚', '💮', '🉐', '️', '️', '🈴', '🈵', '', '🈲', '🅰️', '🅱️', '🆑', '🆘', '❌', '', '⛔', '🚫', '', '💢', '️', '🚯', '🚱', '', '📵', '🚭', '❗', '', '❓', '', '‼️', '️', '🔅', '🔆', '〽️', '⚠️', '🚸', '🔱', '️', '🔰', '♻️', '✅', '🈯', '⭐', '🌟', '✨', '⚡', '☄️', '💥', '🔥', '🌪️', '🌈', '☀️', '🌤️', '⛅', '🌥️', '☁️', '🌦️', '🌧️', '⛈️', '🌩️', '🌨️', '❄️', '☃️', '⛄', '🌬️', '💨', '💧', '💦', '☂️', '🌊'];
 
-        // Инициализация панели эмодзи
         function initEmojiPanel() {
             emojis.forEach(emoji => {
                 const btn = document.createElement('button');
@@ -444,7 +443,6 @@
             messageInput.focus();
         }
 
-        // Конвертация файла в base64
         function fileToBase64(file) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -454,76 +452,73 @@
             });
         }
 
-        // Загрузка изображения
-        async function handleImageUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            
-            if (file.size > 20 * 1024 * 1024) {
-                alert('Файл слишком большой! Максимум 20MB');
+        function initCloudinaryWidgets() {
+            if (typeof cloudinary === 'undefined') {
+                console.error('Cloudinary widget не загружен');
                 return;
             }
-            
-            try {
-                const base64 = await fileToBase64(file);
-                socket.emit('image_upload', {
-                    username: currentUser,
-                    fileUrl: base64,
-                    fileName: file.name
-                });
-            } catch (error) {
-                console.error('Ошибка загрузки изображения:', error);
-                alert('Ошибка загрузки изображения');
+
+            // Виджет для аудио
+            audioUploadWidget = cloudinary.createUploadWidget({
+                cloudName: 'dtvg9tzql',
+                uploadPreset: 'rich-voice',
+                sources: ['local'],
+                maxFileSize: 50000000,
+                resourceType: 'video',
+                clientAllowedFormats: ['mp3', 'wav', 'ogg', 'm4a', 'flac', 'mp4', 'webm', 'mov'],
+                multiple: false,
+                maxFiles: 1,
+                folder: 'rich-voice-audio'
+            }, (error, result) => {
+                if (!error && result && result.event === "success") {
+                    console.log('✅ Аудио загружено:', result.info.secure_url);
+                    socket.emit('audio_upload', {
+                        username: currentUser,
+                        fileUrl: result.info.secure_url,
+                        fileName: result.info.original_filename + '.' + result.info.format
+                    });
+                }
+            });
+
+            // Виджет для изображений
+            imageUploadWidget = cloudinary.createUploadWidget({
+                cloudName: 'dtvg9tzql',
+                uploadPreset: 'rich-voice',
+                sources: ['local'],
+                maxFileSize: 50000000,
+                resourceType: 'image',
+                multiple: false,
+                maxFiles: 1,
+                folder: 'rich-voice-images'
+            }, (error, result) => {
+                if (!error && result && result.event === "success") {
+                    console.log('✅ Изображение загружено:', result.info.secure_url);
+                    socket.emit('image_upload', {
+                        username: currentUser,
+                        fileUrl: result.info.secure_url,
+                        fileName: result.info.original_filename + '.' + result.info.format
+                    });
+                }
+            });
+        }
+
+        async function handleAudioUpload(event) {
+            if (audioUploadWidget) {
+                audioUploadWidget.open();
+            } else {
+                alert('Виджет ещё не загружен, подождите немного');
             }
-            
             event.target.value = '';
         }
 
-        // Загрузка аудио
-        async function handleAudioUpload(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    
-    console.log('🎵 Выбираю файл:', file.name, 'Размер:', (file.size / 1024 / 1024).toFixed(2), 'MB');
-    
-    if (file.size > 50 * 1024 * 1024) {
-        alert('Файл слишком большой! Максимум 50MB для аудио');
-        return;
-    }
-    
-    try {
-        console.log('🔄 Конвертирую в base64...');
-        const base64 = await fileToBase64(file);
-        console.log('✅ Base64 готов, длина:', base64.length);
-        
-        // Проверяем размер данных перед отправкой
-        const payloadSize = (JSON.stringify({
-            username: currentUser,
-            fileUrl: base64,
-            fileName: file.name
-        }).length / 1024 / 1024).toFixed(2);
-        console.log('📊 Размер данных для отправки:', payloadSize, 'MB');
-        
-        if (payloadSize > 10) {
-            console.warn('⚠️ Данные больше 10MB, может не пройти через Socket.IO');
+        async function handleImageUpload(event) {
+            if (imageUploadWidget) {
+                imageUploadWidget.open();
+            } else {
+                alert('Виджет ещё не загружен, подождите немного');
+            }
+            event.target.value = '';
         }
-        
-        console.log('📤 Отправляю на сервер...');
-        
-        socket.emit('audio_upload', {
-            username: currentUser,
-            fileUrl: base64,
-            fileName: file.name
-        });
-        
-        console.log('📨 Отправлено!');
-    } catch (error) {
-        console.error('❌ Ошибка загрузки аудио:', error);
-        alert('Ошибка загрузки аудио: ' + error.message);
-    }
-    
-    event.target.value = '';
-}
 
         window.addEventListener('DOMContentLoaded', () => {
             const savedUser = localStorage.getItem('richvoice_user');
@@ -616,12 +611,17 @@
             chatContainer.style.display = 'flex';
             currentUserDisplay.textContent = currentUser;
             
+            // Инициализируем Cloudinary виджеты
+            setTimeout(() => {
+                initCloudinaryWidgets();
+            }, 500);
+            
             socket = io({
                 transports: ['websocket', 'polling'],
                 reconnection: true,
                 reconnectionAttempts: 5,
                 reconnectionDelay: 1000,
-                maxHttpBufferSize: 1e8 // 100MB
+                maxHttpBufferSize: 1e8
             });
             
             socket.emit('user_join', currentUser);
@@ -695,18 +695,18 @@
                     <img src="${data.fileUrl}" class="message-image" onclick="window.open('${data.fileUrl}', '_blank')">
                 `;
             } else if (data.type === 'audio') {
-    const safeFileName = escapeHtml(data.fileName).replace(/'/g, "\\'");
-    contentHtml = `
-        <div class="message-content">🎵 ${escapeHtml(data.fileName)}</div>
-        <div class="audio-player">
-            <audio src="${data.fileUrl}" controls data-filename="${escapeHtml(data.fileName)}"></audio>
-            <div class="audio-controls">
-                <button onclick="broadcastAudioControl('${safeFileName}', 'play')">▶️ Играть для всех</button>
-                <button onclick="broadcastAudioControl('${safeFileName}', 'pause')">⏸️ Пауза для всех</button>
-            </div>
-        </div>
-    `;
-}
+                const safeFileName = escapeHtml(data.fileName).replace(/'/g, "\\'");
+                contentHtml = `
+                    <div class="message-content">🎵 ${escapeHtml(data.fileName)}</div>
+                    <div class="audio-player">
+                        <audio src="${data.fileUrl}" controls data-filename="${escapeHtml(data.fileName)}"></audio>
+                        <div class="audio-controls">
+                            <button onclick="broadcastAudioControl('${safeFileName}', 'play')">▶️ Играть для всех</button>
+                            <button onclick="broadcastAudioControl('${safeFileName}', 'pause')">⏸️ Пауза для всех</button>
+                        </div>
+                    </div>
+                `;
+            }
             
             messageDiv.innerHTML = `
                 <div class="message-header">
@@ -719,77 +719,65 @@
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
 
-        // Хранилище активных аудио плееров
-const activeAudioPlayers = new Map();
-
-function broadcastAudioControl(fileName, action) {
-    console.log(`🎮 Управление аудио: ${action} для ${fileName}`);
-    
-    // Сначала запускаем у себя
-    const audioElements = document.querySelectorAll('audio');
-    audioElements.forEach(audio => {
-        if (audio.src && audio.src.includes(fileName)) {
-            console.log(`▶️ Запускаю у себя: ${action}`);
-            if (action === 'play') {
-                audio.play().catch(err => console.error('Ошибка воспроизведения:', err));
-            } else if (action === 'pause') {
-                audio.pause();
-            }
-        }
-    });
-    
-    // Затем отправляем всем остальным
-    socket.emit('audio_control', {
-        fileName: fileName,
-        action: action,
-        username: currentUser,
-        timestamp: Date.now()
-    });
-}
-
-function handleRemoteAudioControl(data) {
-    console.log(`🎧 Получено управление аудио: ${data.action} от ${data.username}`);
-    
-    // Не реагируем на свои собственные команды
-    if (data.username === currentUser) {
-        console.log('⏭️ Пропускаем своё событие');
-        return;
-    }
-    
-    // Ищем все аудио элементы
-    const audioElements = document.querySelectorAll('audio');
-    console.log(`🔍 Найдено аудио плееров: ${audioElements.length}`);
-    
-    let found = false;
-    
-    audioElements.forEach((audio, index) => {
-        const fileName = audio.getAttribute('data-filename');
-        console.log(`Плеер ${index}: data-filename="${fileName}"`);
-        
-        // Сравниваем имена файлов
-        if (fileName && fileName === data.fileName) {
-            found = true;
-            console.log(`✅ Нашёл плеер! Выполняю: ${data.action}`);
+        function broadcastAudioControl(fileName, action) {
+            console.log(`🎮 Управление аудио: ${action} для ${fileName}`);
             
-            if (data.action === 'play') {
-                audio.play().catch(err => {
-                    console.error('❌ Ошибка воспроизведения:', err);
-                    alert('Не удалось воспроизвести аудио. Попробуйте ещё раз.');
-                });
-            } else if (data.action === 'pause') {
-                audio.pause();
+            const audioElements = document.querySelectorAll('audio');
+            audioElements.forEach(audio => {
+                const audioFileName = audio.getAttribute('data-filename');
+                if (audioFileName && audioFileName === fileName) {
+                    console.log(`▶️ Запускаю у себя: ${action}`);
+                    if (action === 'play') {
+                        audio.play().catch(err => console.error('Ошибка воспроизведения:', err));
+                    } else if (action === 'pause') {
+                        audio.pause();
+                    }
+                }
+            });
+            
+            socket.emit('audio_control', {
+                fileName: fileName,
+                action: action,
+                username: currentUser,
+                timestamp: Date.now()
+            });
+        }
+
+        function handleRemoteAudioControl(data) {
+            console.log(`🎧 Получено управление аудио: ${data.action} от ${data.username}`);
+            
+            if (data.username === currentUser) {
+                console.log('⏭️ Пропускаем своё событие');
+                return;
+            }
+            
+            const audioElements = document.querySelectorAll('audio');
+            console.log(`🔍 Найдено аудио плееров: ${audioElements.length}`);
+            
+            let found = false;
+            
+            audioElements.forEach((audio, index) => {
+                const fileName = audio.getAttribute('data-filename');
+                console.log(`Плеер ${index}: data-filename="${fileName}"`);
+                
+                if (fileName && fileName === data.fileName) {
+                    found = true;
+                    console.log(`✅ Нашёл плеер! Выполняю: ${data.action}`);
+                    
+                    if (data.action === 'play') {
+                        audio.play().catch(err => {
+                            console.error('❌ Ошибка воспроизведения:', err);
+                        });
+                    } else if (data.action === 'pause') {
+                        audio.pause();
+                    }
+                }
+            });
+            
+            if (!found) {
+                console.log(`⚠️ Плеер не найден для файла: ${data.fileName}`);
             }
         }
-    });
-    
-    if (!found) {
-        console.log(`⚠️ Плеер не найден для файла: ${data.fileName}`);
-        console.log('Доступные файлы в плеерах:');
-        audioElements.forEach(audio => {
-            console.log('-', audio.getAttribute('data-filename'));
-        });
-    }
-}
 
         function displaySystemMessage(data) {
             const messageDiv = document.createElement('div');
