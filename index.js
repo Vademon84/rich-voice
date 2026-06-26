@@ -31,7 +31,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 const storage = multer.memoryStorage();
 const upload = multer({ 
   storage: storage,
-  limits: { fileSize: 50 * 1024 * 1024 } // 50MB лимит
+  limits: { fileSize: 100 * 1024 * 1024 } // 100MB лимит
 });
 
 // Хранилище онлайн пользователей
