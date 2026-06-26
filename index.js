@@ -1,61 +1,54 @@
-// Подключаем библиотеки
 const express = require('express');
 const http = require('http');
-const socketIo = require('socket.io');
+const { Server } = require('socket.io');
 const mongoose = require('mongoose');
 const cors = require('cors');
-require('dotenv').config();
+const path = require('path');
 
-// Проверка подключения к MongoDB
-console.log('MongoDB URI:', process.env.MONGODB_URI ? 'Найдена' : 'НЕ найдена');
-if (process.env.MONGODB_URI) {
-  console.log('Начало строки:', process.env.MONGODB_URI.substring(0, 30) + '...');
-}
-
-// Создаем приложение Express
 const app = express();
 const server = http.createServer(app);
-const io = socketIo(server, {
+const io = new Server(server, {
   cors: {
     origin: "*",
     methods: ["GET", "POST"]
   }
 });
 
-// Подключаем middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static('public'));
 
-// Подключаемся к MongoDB
-mongoose.connect(process.env.MONGODB_URI)
-.then(() => console.log('✅ MongoDB подключен'))
-.catch(err => console.error('❌ Ошибка MongoDB:', err));
+// Раздаём статические файлы из папки public
+app.use(express.static(path.join(__dirname, 'public')));
 
-// Простой маршрут для проверки
+// Главная страница
 app.get('/', (req, res) => {
-  res.sendFile(__dirname + '/public/index.html');  // <-- Изменено
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Socket.io - обработка подключений
-io.on('connection', (socket) => {
-  console.log(' Пользователь подключился:', socket.id);
+// Подключаемся к MongoDB
+if (process.env.MONGODB_URI) {
+  mongoose.connect(process.env.MONGODB_URI)
+    .then(() => console.log('✅ MongoDB подключен'))
+    .catch(err => console.error('❌ Ошибка MongoDB:', err));
+} else {
+  console.log('⚠️ MONGODB_URI не найден, работаем без базы данных');
+}
 
-  // Когда пользователь отправляет сообщение
+// Socket.io
+io.on('connection', (socket) => {
+  console.log('👤 Пользователь подключился:', socket.id);
+
   socket.on('message', (data) => {
     console.log('📨 Сообщение:', data);
-    // Рассылаем всем подключенным пользователям
     io.emit('message', data);
   });
 
-  // Когда пользователь отключается
   socket.on('disconnect', () => {
-    console.log(' Пользователь отключился:', socket.id);
+    console.log('🔌 Пользователь отключился:', socket.id);
   });
 });
 
-// Запускаем сервер
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Сервер запущен на порту ${PORT}`);
 });
