@@ -481,28 +481,36 @@
 
         // Загрузка аудио
         async function handleAudioUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            
-            if (file.size > 50 * 1024 * 1024) {
-                alert('Файл слишком большой! Максимум 50MB');
-                return;
-            }
-            
-            try {
-                const base64 = await fileToBase64(file);
-                socket.emit('audio_upload', {
-                    username: currentUser,
-                    fileUrl: base64,
-                    fileName: file.name
-                });
-            } catch (error) {
-                console.error('Ошибка загрузки аудио:', error);
-                alert('Ошибка загрузки аудио');
-            }
-            
-            event.target.value = '';
-        }
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    console.log('🎵 Выбираю файл:', file.name, 'Размер:', (file.size / 1024 / 1024).toFixed(2), 'MB');
+    
+    if (file.size > 5 * 1024 * 1024) {
+        alert('Файл слишком большой! Максимум 5MB для аудио');
+        return;
+    }
+    
+    try {
+        console.log('🔄 Конвертирую в base64...');
+        const base64 = await fileToBase64(file);
+        console.log('✅ Base64 готов, длина:', base64.length);
+        console.log('📤 Отправляю на сервер...');
+        
+        socket.emit('audio_upload', {
+            username: currentUser,
+            fileUrl: base64,
+            fileName: file.name
+        });
+        
+        console.log('📨 Отправлено!');
+    } catch (error) {
+        console.error('❌ Ошибка загрузки аудио:', error);
+        alert('Ошибка загрузки аудио: ' + error.message);
+    }
+    
+    event.target.value = '';
+}
 
         window.addEventListener('DOMContentLoaded', () => {
             const savedUser = localStorage.getItem('richvoice_user');
@@ -673,18 +681,18 @@
                     <img src="${data.fileUrl}" class="message-image" onclick="window.open('${data.fileUrl}', '_blank')">
                 `;
             } else if (data.type === 'audio') {
-                const audioId = 'audio_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-                contentHtml = `
-                    <div class="message-content">🎵 ${escapeHtml(data.fileName)}</div>
-                    <div class="audio-player" id="${audioId}">
-                        <audio src="${data.fileUrl}" controls></audio>
-                        <div class="audio-controls">
-                            <button onclick="broadcastAudioControl('${audioId}', 'play')">▶️ Играть для всех</button>
-                            <button onclick="broadcastAudioControl('${audioId}', 'pause')">⏸️ Пауза для всех</button>
-                        </div>
-                    </div>
-                `;
-            }
+    const safeFileName = escapeHtml(data.fileName).replace(/'/g, "\\'");
+    contentHtml = `
+        <div class="message-content">🎵 ${escapeHtml(data.fileName)}</div>
+        <div class="audio-player">
+            <audio src="${data.fileUrl}" controls data-filename="${escapeHtml(data.fileName)}"></audio>
+            <div class="audio-controls">
+                <button onclick="broadcastAudioControl('${safeFileName}', 'play')">▶️ Играть для всех</button>
+                <button onclick="broadcastAudioControl('${safeFileName}', 'pause')">⏸️ Пауза для всех</button>
+            </div>
+        </div>
+    `;
+}
             
             messageDiv.innerHTML = `
                 <div class="message-header">
@@ -697,37 +705,52 @@
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
 
-        function broadcastAudioControl(audioId, action) {
-            const audioElement = document.querySelector(`#${audioId} audio`);
-            if (audioElement) {
-                if (action === 'play') {
-                    audioElement.play();
-                } else if (action === 'pause') {
-                    audioElement.pause();
-                }
-            }
-            
-            socket.emit('audio_control', {
-                audioId: audioId,
-                action: action,
-                username: currentUser
-            });
-        }
+        // Хранилище активных аудио плееров
+const activeAudioPlayers = new Map();
 
-        function handleRemoteAudioControl(data) {
-            // Находим аудио элемент по ID (упрощённо)
-            const audioPlayers = document.querySelectorAll('.audio-player');
-            audioPlayers.forEach(player => {
-                const audio = player.querySelector('audio');
-                if (audio && audio.src === data.audioSrc) {
-                    if (data.action === 'play') {
-                        audio.play();
-                    } else if (data.action === 'pause') {
-                        audio.pause();
-                    }
-                }
-            });
+function broadcastAudioControl(fileName, action) {
+    console.log(`🎮 Управление аудио: ${action} для ${fileName}`);
+    
+    // Отправляем всем, включая себя
+    socket.emit('audio_control', {
+        fileName: fileName,
+        action: action,
+        username: currentUser,
+        timestamp: Date.now()
+    });
+}
+
+function handleRemoteAudioControl(data) {
+    console.log(`🎧 Получено управление аудио: ${data.action} от ${data.username}`);
+    
+    // Не реагируем на свои собственные команды
+    if (data.username === currentUser) {
+        console.log('⏭️ Пропускаем своё событие');
+        return;
+    }
+    
+    // Ищем все аудио с этим именем файла
+    const audioElements = document.querySelectorAll('audio');
+    let found = false;
+    
+    audioElements.forEach(audio => {
+        // Проверяем, что это наше аудио (по src или data-атрибуту)
+        if (audio.src && audio.src.includes(data.fileName)) {
+            found = true;
+            console.log('▶️ Нашёл аудио плеер, выполняю:', data.action);
+            
+            if (data.action === 'play') {
+                audio.play().catch(err => console.error('Ошибка воспроизведения:', err));
+            } else if (data.action === 'pause') {
+                audio.pause();
+            }
         }
+    });
+    
+    if (!found) {
+        console.log('⚠️ Аудио плеер не найден для:', data.fileName);
+    }
+}
 
         function displaySystemMessage(data) {
             const messageDiv = document.createElement('div');
