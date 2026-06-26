@@ -26,6 +26,9 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Хранилище онлайн пользователей (socketId -> username)
+const onlineUsers = new Map();
+
 // Главная страница
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
@@ -38,6 +41,10 @@ app.post('/api/register', async (req, res) => {
     
     if (!username || !password) {
       return res.status(400).json({ error: 'Введите имя пользователя и пароль' });
+    }
+    
+    if (password.length < 4) {
+      return res.status(400).json({ error: 'Пароль должен быть минимум 4 символа' });
     }
     
     const existingUser = await User.findOne({ username });
@@ -83,12 +90,17 @@ app.post('/api/login', async (req, res) => {
 // Получение истории сообщений
 app.get('/api/messages', async (req, res) => {
   try {
-    const messages = await Message.find().sort({ createdAt: 1 }).limit(50);
-    res.json(messages);
+    const messages = await Message.find().sort({ createdAt: -1 }).limit(50);
+    res.json(messages.reverse());
   } catch (error) {
     console.error('❌ Ошибка получения сообщений:', error);
     res.status(500).json({ error: 'Ошибка получения сообщений' });
   }
+});
+
+// Получение списка онлайн пользователей
+app.get('/api/online', (req, res) => {
+  res.json(Array.from(onlineUsers.values()));
 });
 
 // Подключаемся к MongoDB
@@ -102,28 +114,63 @@ if (process.env.MONGODB_URI) {
 
 // Socket.IO
 io.on('connection', (socket) => {
-  console.log('👤 Пользователь подключился:', socket.id);
+  console.log('👤 Новое соединение:', socket.id);
 
+  // Пользователь вошёл в чат
+  socket.on('user_join', (username) => {
+    console.log(`🟢 ${username} подключился`);
+    
+    // Добавляем в список онлайн
+    onlineUsers.set(socket.id, username);
+    
+    // Отправляем всем обновлённый список онлайн
+    io.emit('online_users', Array.from(onlineUsers.values()));
+    
+    // Уведомление всем о входе
+    socket.broadcast.emit('system_message', {
+      text: `${username} присоединился к чату`,
+      type: 'join'
+    });
+  });
+
+  // Пользователь отправил сообщение
   socket.on('message', async (data) => {
     console.log('📨 Сообщение:', data);
     
-    // Сохраняем сообщение в базу
     try {
       const message = new Message({
         username: data.username,
         text: data.text
       });
       await message.save();
+      
+      // Рассылаем всем с датой из базы
+      io.emit('message', {
+        username: data.username,
+        text: data.text,
+        createdAt: message.createdAt
+      });
     } catch (error) {
       console.error('❌ Ошибка сохранения сообщения:', error);
     }
-    
-    // Рассылаем всем
-    io.emit('message', data);
   });
 
+  // Пользователь отключился
   socket.on('disconnect', () => {
-    console.log('🔌 Пользователь отключился:', socket.id);
+    const username = onlineUsers.get(socket.id);
+    if (username) {
+      console.log(`🔴 ${username} отключился`);
+      onlineUsers.delete(socket.id);
+      
+      // Отправляем всем обновлённый список онлайн
+      io.emit('online_users', Array.from(onlineUsers.values()));
+      
+      // Уведомление всем о выходе
+      socket.broadcast.emit('system_message', {
+        text: `${username} покинул чат`,
+        type: 'leave'
+      });
+    }
   });
 });
 
