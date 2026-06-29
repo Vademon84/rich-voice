@@ -145,12 +145,13 @@ function renderReactions(messageId, reactions) {
     }
 }
 
-// ✅ НОВОЕ: Показать панель выбора реакции
+// ✅ НОВОЕ: Показать панель выбора реакции (не закрывается после выбора)
 function showReactionPicker(messageId) {
     // Закрываем все открытые панели
     const existingPicker = document.querySelector('.reaction-picker');
     if (existingPicker) {
         existingPicker.remove();
+        return; // Если панель уже была открыта - закрываем её
     }
     
     const messageDiv = document.getElementById(`msg_${messageId}`);
@@ -163,9 +164,10 @@ function showReactionPicker(messageId) {
         const btn = document.createElement('button');
         btn.className = 'reaction-picker-btn';
         btn.textContent = emoji;
-        btn.onclick = () => {
+        btn.onclick = (e) => {
+            e.stopPropagation(); // Предотвращаем закрытие панели
             toggleReaction(messageId, emoji);
-            picker.remove();
+            // ✅ НЕ закрываем панель - пользователь может поставить ещё реакции
         };
         picker.appendChild(btn);
     });
