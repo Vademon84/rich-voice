@@ -44,7 +44,8 @@ async function loadMessages(channel) {
                 fileUrl: msg.fileUrl,
                 fileName: msg.fileName,
                 createdAt: msg.createdAt,
-                _id: msg._id
+                _id: msg._id,
+                reactions: msg.reactions || {}  // ✅ Передаём реакции
             });
         });
         
@@ -74,7 +75,6 @@ function checkMention(text) {
 // ✅ НОВОЕ: Звуковое уведомление
 function playNotificationSound() {
     try {
-        // Создаём короткий звуковой сигнал
         const audioContext = new (window.AudioContext || window.webkitAudioContext)();
         const oscillator = audioContext.createOscillator();
         const gainNode = audioContext.createGain();
@@ -112,6 +112,89 @@ function showNotification(text) {
     }, 3000);
 }
 
+// ✅ НОВОЕ: Список доступных реакций
+const REACTION_EMOJIS = ['❤️', '😂', '👍', '😮', '😢', '🎉'];
+
+// ✅ НОВОЕ: Отображение реакций под сообщением
+function renderReactions(messageId, reactions) {
+    const reactionsDiv = document.getElementById(`reactions_${messageId}`);
+    if (!reactionsDiv) return;
+    
+    reactionsDiv.innerHTML = '';
+    
+    if (!reactions || Object.keys(reactions).length === 0) {
+        return;
+    }
+    
+    for (const [emoji, users] of Object.entries(reactions)) {
+        if (users.length === 0) continue;
+        
+        const reactionBtn = document.createElement('button');
+        reactionBtn.className = 'reaction-btn';
+        
+        // Если текущий пользователь уже поставил эту реакцию - выделяем
+        if (users.includes(currentUser)) {
+            reactionBtn.classList.add('active');
+        }
+        
+        reactionBtn.innerHTML = `${emoji} <span class="reaction-count">${users.length}</span>`;
+        reactionBtn.title = users.join(', ');
+        reactionBtn.onclick = () => toggleReaction(messageId, emoji);
+        
+        reactionsDiv.appendChild(reactionBtn);
+    }
+}
+
+// ✅ НОВОЕ: Показать панель выбора реакции
+function showReactionPicker(messageId) {
+    // Закрываем все открытые панели
+    const existingPicker = document.querySelector('.reaction-picker');
+    if (existingPicker) {
+        existingPicker.remove();
+    }
+    
+    const messageDiv = document.getElementById(`msg_${messageId}`);
+    if (!messageDiv) return;
+    
+    const picker = document.createElement('div');
+    picker.className = 'reaction-picker';
+    
+    REACTION_EMOJIS.forEach(emoji => {
+        const btn = document.createElement('button');
+        btn.className = 'reaction-picker-btn';
+        btn.textContent = emoji;
+        btn.onclick = () => {
+            toggleReaction(messageId, emoji);
+            picker.remove();
+        };
+        picker.appendChild(btn);
+    });
+    
+    // Позиционируем панель рядом с сообщением
+    messageDiv.appendChild(picker);
+    
+    // Закрываем панель при клике вне её
+    setTimeout(() => {
+        document.addEventListener('click', function closePicker(e) {
+            if (!picker.contains(e.target)) {
+                picker.remove();
+                document.removeEventListener('click', closePicker);
+            }
+        });
+    }, 100);
+}
+
+// ✅ НОВОЕ: Добавить/убрать реакцию (toggle)
+function toggleReaction(messageId, emoji) {
+    if (!socket) return;
+    
+    socket.emit('toggle_reaction', {
+        messageId: messageId,
+        emoji: emoji,
+        username: currentUser
+    });
+}
+
 function displayMessage(data) {
     const messagesDiv = document.getElementById('messages');
     const messageDiv = document.createElement('div');
@@ -123,11 +206,9 @@ function displayMessage(data) {
     let contentHtml = '';
     
     if (data.type === 'text') {
-        // ✅ ИСПРАВЛЕНО: добавлена подсветка упоминаний
         const highlightedText = highlightMentions(escapeHtml(data.text));
         contentHtml = `<div class="message-content">${highlightedText}</div>`;
         
-        // ✅ НОВОЕ: Проверяем, упомянули ли нас
         if (data.text && data.username !== currentUser) {
             checkMention(data.text);
         }
@@ -160,18 +241,40 @@ function displayMessage(data) {
         </div>
     ` : '';
     
+    // ✅ НОВОЕ: Кнопка добавления реакции
+    const reactionButton = data._id ? `
+        <button class="add-reaction-btn" onclick="showReactionPicker('${data._id}')" title="Добавить реакцию">
+            😊
+        </button>
+    ` : '';
+    
+    // ✅ НОВОЕ: Блок для отображения реакций
+    const reactionsBlock = data._id ? `
+        <div class="reactions-container" id="reactions_${data._id}"></div>
+    ` : '';
+    
     messageDiv.innerHTML = `
         <div class="message-header">
             <div class="message-username-group">
                 <div class="username">${escapeHtml(data.username)}</div>
                 <div class="message-time">${time}</div>
             </div>
-            ${deleteButton}
+            <div class="message-header-actions">
+                ${reactionButton}
+                ${deleteButton}
+            </div>
         </div>
         ${contentHtml}
+        ${reactionsBlock}
     `;
     
     messagesDiv.appendChild(messageDiv);
+    
+    // ✅ НОВОЕ: Отображаем существующие реакции
+    if (data._id && data.reactions) {
+        renderReactions(data._id, data.reactions);
+    }
+    
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
@@ -236,7 +339,6 @@ function handleRemoteAudioControl(data) {
     });
 }
 
-// ✅ ИСПРАВЛЕНО: добавлена кнопка "Написать ЛС"
 function updateOnlineList(users) {
     const onlineList = document.getElementById('onlineList');
     const onlineCount = document.getElementById('onlineCount');
@@ -246,7 +348,6 @@ function updateOnlineList(users) {
         const userDiv = document.createElement('div');
         userDiv.className = 'online-user';
         
-        // ✅ НОВОЕ: кнопка "Написать" для ЛС (не для себя)
         const writeButton = user !== currentUser ? `
             <button class="write-btn" onclick="openPrivateChat('${user}')" title="Написать ЛС">
                 ✉️
@@ -269,7 +370,6 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// Удаление сообщения
 async function deleteMessage(messageId) {
     if (!confirm('Удалить сообщение?')) return;
     
@@ -284,7 +384,6 @@ async function deleteMessage(messageId) {
     }
 }
 
-// Показ уведомления
 function showToast(message) {
     let toast = document.getElementById('toastNotification');
     if (!toast) {
@@ -302,7 +401,6 @@ function showToast(message) {
     }, 3000);
 }
 
-// Обработка ошибки от сервера
 function handleError(message) {
     console.error('❌', message);
     showToast(message);
@@ -310,32 +408,27 @@ function handleError(message) {
 
 // ========== ПРИВАТНЫЕ СООБЩЕНИЯ (ЛС) ==========
 
-let currentPrivateChat = null; // С кем сейчас ведём ЛС
+let currentPrivateChat = null;
 
-// ✅ НОВОЕ: Открытие окна ЛС
 function openPrivateChat(username) {
     currentPrivateChat = username;
     
-    // Показываем окно ЛС
     const privateChatWindow = document.getElementById('privateChatWindow');
     const privateChatHeader = document.getElementById('privateChatHeader');
     privateChatHeader.textContent = `🔒 ЛС с ${username}`;
     privateChatWindow.style.display = 'flex';
     
-    // Загружаем историю
     socket.emit('load_private_messages', {
         user1: currentUser,
         user2: username
     });
 }
 
-// ✅ НОВОЕ: Закрытие окна ЛС
 function closePrivateChat() {
     currentPrivateChat = null;
     document.getElementById('privateChatWindow').style.display = 'none';
 }
 
-// ✅ НОВОЕ: Отправка приватного сообщения
 function sendPrivateMessage() {
     const input = document.getElementById('privateMessageInput');
     const text = input.value.trim();
@@ -350,7 +443,6 @@ function sendPrivateMessage() {
     }
 }
 
-// ✅ НОВОЕ: Отображение приватного сообщения
 function displayPrivateMessage(data) {
     const messagesDiv = document.getElementById('privateMessages');
     const messageDiv = document.createElement('div');
