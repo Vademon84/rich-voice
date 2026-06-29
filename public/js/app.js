@@ -4,7 +4,15 @@ let socket = null;
 function showChat() {
     document.getElementById('authContainer').style.display = 'none';
     document.getElementById('chatContainer').style.display = 'flex';
-    document.getElementById('currentUser').textContent = currentUser;
+    
+    // Загружаем и отображаем аватар
+    if (typeof loadUserAvatar === 'function' && typeof updateCurrentUserAvatar === 'function') {
+        loadUserAvatar(currentUser).then(avatarUrl => {
+            updateCurrentUserAvatar(avatarUrl);
+        });
+    } else {
+        document.getElementById('currentUser').textContent = currentUser;
+    }
     
     socket = io({
         transports: ['websocket', 'polling'],
@@ -16,8 +24,6 @@ function showChat() {
     
     socket.emit('user_join', currentUser);
     
-    // Обработчики Socket.IO
-    // Показываем сообщение только если оно из текущего канала
     socket.on('message', (data) => {
         if (data.channel === currentChannel) {
             displayMessage(data);
@@ -31,18 +37,14 @@ function showChat() {
         }
     });
     
-     // ✅ НОВОЕ: Обновление реакций на сообщения
     socket.on('reaction_update', (data) => {
         console.log(`📥 Получено обновление реакций для ${data.messageId}:`, data.reactions);
         
-        // Обновляем реакции только если сообщение в текущем канале
         if (data.channel === currentChannel) {
             if (typeof renderReactions === 'function') {
                 renderReactions(data.messageId, data.reactions);
                 console.log(`✅ Реакции отображены для ${data.messageId}`);
             }
-        } else {
-            console.log(`⏭️ Пропускаем обновление - сообщение не в текущем канале`);
         }
     });
     
@@ -50,7 +52,6 @@ function showChat() {
     socket.on('online_users', (users) => updateOnlineList(users));
     socket.on('audio_control', (data) => handleRemoteAudioControl(data));
     
-    // Обработка ошибок от сервера
     socket.on('error_message', (message) => {
         console.error('❌ Ошибка сервера:', message);
         if (typeof showToast === 'function') {
@@ -58,11 +59,7 @@ function showChat() {
         }
     });
     
-    // ========== ПРИВАТНЫЕ СООБЩЕНИЯ (ЛС) ==========
-    
-    // Получение приватного сообщения
     socket.on('private_message', (data) => {
-        // Показываем ЛС только если открыт чат с этим пользователем
         if (currentPrivateChat && 
             ((data.username === currentUser && data.recipient === currentPrivateChat) ||
              (data.username === currentPrivateChat && data.recipient === currentUser))) {
@@ -70,7 +67,6 @@ function showChat() {
         }
     });
     
-    // Загрузка истории ЛС
     socket.on('private_messages_loaded', (messages) => {
         const messagesDiv = document.getElementById('privateMessages');
         if (messagesDiv) {
@@ -87,7 +83,6 @@ function showChat() {
         }
     });
     
-    // Уведомление о новом ЛС
     socket.on('private_notification', (data) => {
         if (typeof playNotificationSound === 'function') {
             playNotificationSound();
@@ -97,7 +92,6 @@ function showChat() {
         }
     });
     
-    // Уведомление об упоминании
     socket.on('mention_notification', (data) => {
         if (data.from !== currentUser) {
             if (typeof playNotificationSound === 'function') {
@@ -109,7 +103,6 @@ function showChat() {
         }
     });
     
-    // Голосовая комната
     socket.on('voice_participants', async (participants) => {
         console.log('📋 Участники комнаты:', participants);
         updateVoiceParticipants(participants);
