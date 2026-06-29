@@ -38,7 +38,8 @@
                 <h2 id="channelHeader">💬 Болталка</h2>
                 <div class="user-info">
                     <button class="join-voice-btn" id="joinVoiceBtn" onclick="toggleVoiceRoom()">🎤 Голосовая комната</button>
-                    <span class="username-display" id="currentUser"></span>
+                    <div id="currentUser"></div>
+                    <button class="change-avatar-btn" onclick="openAvatarModal()" title="Сменить аватар">📷 Аватар</button>
                     <button class="logout-btn" onclick="logout()">Выйти</button>
                 </div>
             </div>
@@ -91,6 +92,27 @@
         <div class="private-input-area">
             <input type="text" id="privateMessageInput" placeholder="Введите сообщение..." onkeypress="if(event.key==='Enter') sendPrivateMessage()">
             <button onclick="sendPrivateMessage()">Отправить</button>
+        </div>
+    </div>
+
+    <!-- ✅ НОВОЕ: Модальное окно смены аватара -->
+    <div class="avatar-modal" id="avatarModal">
+        <div class="avatar-modal-content">
+            <div class="avatar-modal-header">
+                <h3>📷 Сменить аватар</h3>
+                <button class="close-avatar-modal" onclick="closeAvatarModal()">✖️</button>
+            </div>
+            <div class="avatar-preview">
+                <img id="currentAvatarPreview" src="" alt="Текущий аватар" class="avatar-medium">
+                <p style="margin-top: 10px; color: #b9bbbe;">Текущий аватар</p>
+            </div>
+            <button class="avatar-upload-btn" onclick="document.getElementById('avatarInput').click()">
+                📤 Загрузить новый аватар
+            </button>
+            <input type="file" id="avatarInput" class="file-input" accept="image/*" onchange="handleAvatarUpload(event)">
+            <button class="avatar-remove-btn" onclick="removeAvatar()">
+                🗑️ Удалить аватар
+            </button>
         </div>
     </div>
 
