@@ -10,6 +10,14 @@ const multer = require('multer');
 const User = require('./models/User');
 const Message = require('./models/Message');
 
+const cloudinary = require('cloudinary').v2;
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -36,6 +44,9 @@ const upload = multer({
 
 // Хранилище онлайн пользователей
 const onlineUsers = new Map();
+
+// Хранилище голосовых комнат
+const voiceRooms = new Map(); // roomId -> Map of socketId -> {username, socketId}
 
 // Главная страница
 app.get('/', (req, res) => {
@@ -101,7 +112,7 @@ app.get('/api/messages', async (req, res) => {
     const messages = await Message.find().sort({ createdAt: -1 }).limit(50);
     res.json(messages.reverse());
   } catch (error) {
-    console.error(' Ошибка получения сообщений:', error);
+    console.error('❌ Ошибка получения сообщений:', error);
     res.status(500).json({ error: 'Ошибка получения сообщений' });
   }
 });
@@ -162,10 +173,29 @@ io.on('connection', (socket) => {
     console.log('🖼️ Загрузка изображения от:', data.username);
     
     try {
+      let fileUrl = data.fileUrl;
+      
+      if (data.fileUrl.length > 3000000) {
+        console.log('📤 Большое изображение, загружаю через Cloudinary...');
+        
+        const uploadResult = await new Promise((resolve, reject) => {
+          cloudinary.uploader.upload(data.fileUrl, {
+            resource_type: 'auto',
+            folder: 'rich-voice'
+          }, (error, result) => {
+            if (error) reject(error);
+            else resolve(result);
+          });
+        });
+        
+        fileUrl = uploadResult.secure_url;
+        console.log('✅ Cloudinary URL:', fileUrl);
+      }
+      
       const message = new Message({
         username: data.username,
         type: 'image',
-        fileUrl: data.fileUrl,
+        fileUrl: fileUrl,
         fileName: data.fileName
       });
       await message.save();
@@ -173,24 +203,43 @@ io.on('connection', (socket) => {
       io.emit('message', {
         username: data.username,
         type: 'image',
-        fileUrl: data.fileUrl,
+        fileUrl: fileUrl,
         fileName: data.fileName,
         createdAt: message.createdAt
       });
     } catch (error) {
-      console.error('❌ Ошибка сохранения изображения:', error);
+      console.error('❌ Ошибка загрузки изображения:', error);
     }
   });
 
   // Загрузка аудио
   socket.on('audio_upload', async (data) => {
-    console.log('🎵 Загрузка аудио от:', data.username);
+    console.log('🎵 Загрузка аудио от:', data.username, 'Размер base64:', data.fileUrl.length);
     
     try {
+      let fileUrl = data.fileUrl;
+      
+      if (data.fileUrl.length > 3000000) {
+        console.log('📤 Большой файл, загружаю через Cloudinary...');
+        
+        const uploadResult = await new Promise((resolve, reject) => {
+          cloudinary.uploader.upload(data.fileUrl, {
+            resource_type: 'auto',
+            folder: 'rich-voice'
+          }, (error, result) => {
+            if (error) reject(error);
+            else resolve(result);
+          });
+        });
+        
+        fileUrl = uploadResult.secure_url;
+        console.log('✅ Cloudinary URL:', fileUrl);
+      }
+      
       const message = new Message({
         username: data.username,
         type: 'audio',
-        fileUrl: data.fileUrl,
+        fileUrl: fileUrl,
         fileName: data.fileName
       });
       await message.save();
@@ -198,12 +247,12 @@ io.on('connection', (socket) => {
       io.emit('message', {
         username: data.username,
         type: 'audio',
-        fileUrl: data.fileUrl,
+        fileUrl: fileUrl,
         fileName: data.fileName,
         createdAt: message.createdAt
       });
     } catch (error) {
-      console.error('❌ Ошибка сохранения аудио:', error);
+      console.error('❌ Ошибка загрузки аудио:', error);
     }
   });
 
@@ -211,6 +260,89 @@ io.on('connection', (socket) => {
   socket.on('audio_control', (data) => {
     console.log('🎮 Управление аудио:', data);
     socket.broadcast.emit('audio_control', data);
+  });
+
+  // ========== ГОЛОСОВАЯ КОМНАТА ==========
+  
+  // Пользователь вошёл в голосовую комнату
+  socket.on('voice_join', (data) => {
+    const { username, roomId } = data;
+    console.log(`🎤 ${username} вошёл в голосовую комнату ${roomId}`);
+    
+    if (!voiceRooms.has(roomId)) {
+      voiceRooms.set(roomId, new Map());
+    }
+    
+    const room = voiceRooms.get(roomId);
+    room.set(socket.id, { username, socketId: socket.id });
+    
+    // Присоединяем к комнате Socket.IO
+    socket.join(roomId);
+    
+    // Отправляем новому пользователю список всех участников
+    const participants = Array.from(room.values()).map(p => ({
+      socketId: p.socketId,
+      username: p.username
+    }));
+    
+    socket.emit('voice_participants', participants);
+    
+    // Отправляем всем остальным, что новый пользователь вошёл
+    socket.broadcast.to(roomId).emit('voice_user_joined', {
+      socketId: socket.id,
+      username: username
+    });
+  });
+
+  // Пользователь вышел из голосовой комнаты
+  socket.on('voice_leave', (data) => {
+    const { roomId } = data;
+    const room = voiceRooms.get(roomId);
+    
+    if (room) {
+      const user = room.get(socket.id);
+      if (user) {
+        console.log(`🔇 ${user.username} вышел из голосовой комнаты ${roomId}`);
+        room.delete(socket.id);
+        
+        // Уведомляем остальных
+        socket.broadcast.to(roomId).emit('voice_user_left', {
+          socketId: socket.id,
+          username: user.username
+        });
+        
+        // Обновляем список участников
+        const participants = Array.from(room.values()).map(p => ({
+          socketId: p.socketId,
+          username: p.username
+        }));
+        
+        io.to(roomId).emit('voice_participants', participants);
+      }
+    }
+  });
+
+  // Обмен WebRTC сигналами (SDP offers/answers)
+  socket.on('voice_signal', (data) => {
+    const { targetSocketId, signal, roomId } = data;
+    
+    // Пересылаем сигнал конкретному пользователю
+    io.to(targetSocketId).emit('voice_signal', {
+      socketId: socket.id,
+      signal: signal,
+      roomId: roomId
+    });
+  });
+
+  // ICE candidate
+  socket.on('voice_ice_candidate', (data) => {
+    const { targetSocketId, candidate, roomId } = data;
+    
+    io.to(targetSocketId).emit('voice_ice_candidate', {
+      socketId: socket.id,
+      candidate: candidate,
+      roomId: roomId
+    });
   });
 
   socket.on('disconnect', () => {
@@ -224,10 +356,30 @@ io.on('connection', (socket) => {
         type: 'leave'
       });
     }
+    
+    // Удаляем из всех голосовых комнат
+    voiceRooms.forEach((room, roomId) => {
+      if (room.has(socket.id)) {
+        const user = room.get(socket.id);
+        room.delete(socket.id);
+        
+        socket.broadcast.to(roomId).emit('voice_user_left', {
+          socketId: socket.id,
+          username: user.username
+        });
+        
+        const participants = Array.from(room.values()).map(p => ({
+          socketId: p.socketId,
+          username: p.username
+        }));
+        
+        io.to(roomId).emit('voice_participants', participants);
+      }
+    });
   });
 });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(` Сервер запущен на порту ${PORT}`);
+  console.log(`🚀 Сервер запущен на порту ${PORT}`);
 });
