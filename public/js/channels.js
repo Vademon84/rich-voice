@@ -2,10 +2,10 @@
 let currentChannel = localStorage.getItem('richvoice_channel') || 'болталка';
 
 const CHANNELS = [
-    { id: 'болталка', name: '💬 Болталка', icon: '💬' },
-    { id: 'музыка', name: '🎵 Музыка', icon: '🎵' },
-    { id: 'игры', name: '🎮 Игры', icon: '🎮' },
-    { id: 'питница', name: '🍺 Питница', icon: '🍺' }
+    { id: 'болталка', name: 'Болталка', icon: '💬' },
+    { id: 'музыка', name: 'Музыка', icon: '🎵' },
+    { id: 'игры', name: 'Игры', icon: '🎮' },
+    { id: 'питница', name: 'Питница', icon: '🍺' }
 ];
 
 function initChannels() {
