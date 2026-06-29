@@ -27,8 +27,6 @@ function formatDateTime(dateString) {
     }
 }
 
-// ========== АВАТАРЫ ==========
-
 async function getUserAvatar(username) {
     const cached = localStorage.getItem(`avatar_${username}`);
     if (cached) {
@@ -56,8 +54,6 @@ function createAvatarHTML(username, avatarUrl, size = 'small') {
     const src = avatarUrl || defaultAvatar;
     return `<img src="${src}" alt="${username}" class="avatar avatar-${size}" title="${username}">`;
 }
-
-// ========== СООБЩЕНИЯ ==========
 
 async function loadMessages(channel) {
     const messagesDiv = document.getElementById('messages');
@@ -145,15 +141,11 @@ const REACTION_EMOJIS = ['❤️', '😂', '', '😮', '😢', '🎉'];
 
 function renderReactions(messageId, reactions) {
     const reactionsDiv = document.getElementById(`reactions_${messageId}`);
-    if (!reactionsDiv) {
-        return;
-    }
+    if (!reactionsDiv) return;
     
     reactionsDiv.innerHTML = '';
     
-    if (!reactions || Object.keys(reactions).length === 0) {
-        return;
-    }
+    if (!reactions || Object.keys(reactions).length === 0) return;
     
     for (const [emoji, users] of Object.entries(reactions)) {
         if (users.length === 0) continue;
@@ -215,9 +207,7 @@ function toggleReaction(messageId, emoji) {
     if (!socket) return;
     
     const now = Date.now();
-    if (now - lastReactionTime < 300) {
-        return;
-    }
+    if (now - lastReactionTime < 300) return;
     lastReactionTime = now;
     
     socket.emit('toggle_reaction', {
@@ -447,8 +437,6 @@ function handleError(message) {
     console.error('❌', message);
     showToast(message);
 }
-
-// ========== ПРИВАТНЫЕ СООБЩЕНИЯ (ЛС) ==========
 
 let currentPrivateChat = null;
 
