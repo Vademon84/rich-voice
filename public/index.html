@@ -737,14 +737,23 @@
             socket.on('audio_control', (data) => handleRemoteAudioControl(data));
             
             // Голосовая комната - обработчики
-            socket.on('voice_participants', (participants) => {
-                updateVoiceParticipants(participants);
-            });
+            socket.on('voice_participants', async (participants) => {
+    console.log('📋 Участники комнаты:', participants);
+    updateVoiceParticipants(participants);
+    
+    // Создаём peer connections со всеми участниками, кроме себя
+    for (const p of participants) {
+        if (p.socketId !== socket.id) {
+            console.log('🔗 Создаю соединение с:', p.username);
+            await createPeerConnection(p.socketId, p.username, true);
+        }
+    }
+});
             
             socket.on('voice_user_joined', async (data) => {
-                console.log('🎤 Новый участник в комнате:', data.username);
-                await createPeerConnection(data.socketId, data.username, true);
-            });
+    console.log('🎤 Новый участник в комнате:', data.username);
+    await createPeerConnection(data.socketId, data.username, false);
+});
             
             socket.on('voice_user_left', (data) => {
                 console.log('🔇 Участник вышел:', data.username);
@@ -1059,22 +1068,23 @@
             peerConnections.set(targetSocketId, pc);
             
             // Если мы инициатор - создаём offer
-            if (isInitiator) {
-                try {
-                    const offer = await pc.createOffer();
-                    await pc.setLocalDescription(offer);
-                    
-                    socket.emit('voice_signal', {
-                        targetSocketId: targetSocketId,
-                        signal: { type: 'offer', sdp: offer },
-                        roomId: ROOM_ID
-                    });
-                    
-                    console.log('📤 Отправлен offer для', targetUsername);
-                } catch (error) {
-                    console.error('Ошибка создания offer:', error);
-                }
-            }
+            // Если мы инициатор - создаём offer
+if (isInitiator) {
+    try {
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        
+        socket.emit('voice_signal', {
+            targetSocketId: targetSocketId,
+            signal: offer,
+            roomId: ROOM_ID
+        });
+        
+        console.log('📤 Отправлен offer для', targetUsername);
+    } catch (error) {
+        console.error('Ошибка создания offer:', error);
+    }
+}
         }
 
         async function handleSignal(socketId, signal) {
@@ -1126,10 +1136,10 @@
                 await pc.setLocalDescription(answer);
                 
                 socket.emit('voice_signal', {
-                    targetSocketId: socketId,
-                    signal: { type: 'answer', sdp: answer },
-                    roomId: ROOM_ID
-                });
+    targetSocketId: socketId,
+    signal: answer,  // Передаём сам answer (RTCSessionDescription)
+    roomId: ROOM_ID
+});
                 
                 console.log('📤 Отправлен answer для', socketId);
             } else if (signal.type === 'answer') {
