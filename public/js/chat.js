@@ -141,7 +141,7 @@ function showNotification(text) {
     }, 3000);
 }
 
-const REACTION_EMOJIS = ['❤️', '😂', '👍', '😮', '😢', '🎉'];
+const REACTION_EMOJIS = ['❤️', '😂', '', '😮', '😢', '🎉'];
 
 function renderReactions(messageId, reactions) {
     const reactionsDiv = document.getElementById(`reactions_${messageId}`);
