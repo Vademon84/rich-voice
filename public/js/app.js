@@ -31,6 +31,16 @@ function showChat() {
         }
     });
     
+    // ✅ НОВОЕ: Обновление реакций на сообщения
+    socket.on('reaction_update', (data) => {
+        // Обновляем реакции только если сообщение в текущем канале
+        if (data.channel === currentChannel) {
+            if (typeof renderReactions === 'function') {
+                renderReactions(data.messageId, data.reactions);
+            }
+        }
+    });
+    
     socket.on('system_message', (data) => displaySystemMessage(data));
     socket.on('online_users', (users) => updateOnlineList(users));
     socket.on('audio_control', (data) => handleRemoteAudioControl(data));
