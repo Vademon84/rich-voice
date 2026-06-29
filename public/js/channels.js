@@ -54,7 +54,7 @@ function switchChannel(channelId) {
     // Загружаем сообщения канала
     loadChannelMessages(channelId);
     
-    // Уведомляем сервер о смене канала (если нужно)
+    // Уведомляем сервер о смене канала
     if (socket) {
         socket.emit('channel_switch', { 
             username: currentUser, 
@@ -81,7 +81,8 @@ async function loadChannelMessages(channelId) {
                 fileUrl: msg.fileUrl,
                 fileName: msg.fileName,
                 createdAt: msg.createdAt,
-                _id: msg._id
+                _id: msg._id,
+                reactions: msg.reactions || {}  // ✅ ДОБАВЛЕНО: передаём реакции
             });
         });
         
