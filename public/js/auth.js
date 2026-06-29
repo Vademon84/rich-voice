@@ -238,3 +238,83 @@ function updateCurrentUserAvatar(avatarUrl) {
         }
     }
 }
+
+// ========== ФУНКЦИИ ДЛЯ АВАТАРОВ ==========
+
+// Загрузка аватара пользователя
+async function loadUserAvatar(username) {
+    try {
+        const response = await fetch(`/api/user/avatar/${username}`);
+        const data = await response.json();
+        
+        if (data.avatar) {
+            localStorage.setItem('richvoice_avatar', data.avatar);
+            return data.avatar;
+        }
+        
+        return '';
+    } catch (error) {
+        console.error('Ошибка загрузки аватара:', error);
+        return '';
+    }
+}
+
+// Обновление аватара
+async function updateUserAvatar(avatarUrl) {
+    try {
+        const response = await fetch('/api/user/avatar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: currentUser,
+                avatarUrl: avatarUrl
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            localStorage.setItem('richvoice_avatar', avatarUrl);
+            updateCurrentUserAvatar(avatarUrl);
+            return true;
+        }
+        
+        return false;
+    } catch (error) {
+        console.error('Ошибка обновления аватара:', error);
+        return false;
+    }
+}
+
+// Отображение аватара текущего пользователя
+function updateCurrentUserAvatar(avatarUrl) {
+    const currentUserDisplay = document.getElementById('currentUser');
+    if (!currentUserDisplay) return;
+    
+    currentUserDisplay.innerHTML = '';
+    
+    if (avatarUrl) {
+        const img = document.createElement('img');
+        img.src = avatarUrl;
+        img.className = 'current-user-avatar';
+        img.alt = currentUser;
+        currentUserDisplay.appendChild(img);
+    }
+    
+    const span = document.createElement('span');
+    span.textContent = currentUser;
+    span.className = 'username-text';
+    currentUserDisplay.appendChild(span);
+    
+    // Обновляем превью в модальном окне
+    const modalPreview = document.getElementById('currentAvatarPreview');
+    if (modalPreview) {
+        if (avatarUrl) {
+            modalPreview.src = avatarUrl;
+            modalPreview.style.display = 'block';
+        } else {
+            modalPreview.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser)}&background=random&color=fff&size=128`;
+            modalPreview.style.display = 'block';
+        }
+    }
+}

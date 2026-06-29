@@ -142,7 +142,6 @@ window.addEventListener('DOMContentLoaded', () => {
         currentUser = savedUser;
         showChat();
         
-        // Инициализация каналов (после подключения сокета)
         if (typeof initChannels === 'function') {
             initChannels();
         }
@@ -151,7 +150,6 @@ window.addEventListener('DOMContentLoaded', () => {
     initEmojiPanel();
     initPTT();
     
-    // Обработчики Enter
     document.getElementById('messageInput').addEventListener('keypress', (e) => {
         if (e.key === 'Enter') sendMessage();
     });
