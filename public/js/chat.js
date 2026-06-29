@@ -26,23 +26,29 @@ function formatDateTime(dateString) {
     }
 }
 
-async function loadMessages() {
+async function loadMessages(channel) {
     const messagesDiv = document.getElementById('messages');
+    const targetChannel = channel || currentChannel || 'болталка';
+    
     try {
-        const response = await fetch('/api/messages');
+        const response = await fetch(`/api/messages?channel=${targetChannel}`);
         const messages = await response.json();
         
         messagesDiv.innerHTML = '';
         messages.forEach(msg => {
             displayMessage({
                 username: msg.username,
+                channel: msg.channel,
                 type: msg.type,
                 text: msg.text,
                 fileUrl: msg.fileUrl,
                 fileName: msg.fileName,
-                createdAt: msg.createdAt
+                createdAt: msg.createdAt,
+                _id: msg._id
             });
         });
+        
+        console.log(`📚 Загружено ${messages.length} сообщений из канала ${targetChannel}`);
     } catch (error) {
         console.error('Ошибка загрузки сообщений:', error);
     }
@@ -52,6 +58,7 @@ function displayMessage(data) {
     const messagesDiv = document.getElementById('messages');
     const messageDiv = document.createElement('div');
     messageDiv.className = 'message';
+    messageDiv.id = `msg_${data._id || Date.now()}`;
     
     const time = data.createdAt ? formatDateTime(data.createdAt) : 'Только что';
     
@@ -78,13 +85,27 @@ function displayMessage(data) {
         `;
     }
     
+    // Кнопка удаления (только для своих сообщений)
+    const canDelete = data.username === currentUser && data._id;
+    const deleteButton = canDelete ? `
+        <div class="message-actions">
+            <button class="message-delete-btn" onclick="deleteMessage('${data._id}')" title="Удалить сообщение">
+                🗑️
+            </button>
+        </div>
+    ` : '';
+    
     messageDiv.innerHTML = `
         <div class="message-header">
-            <div class="username">${escapeHtml(data.username)}</div>
-            <div class="message-time">${time}</div>
+            <div class="message-username-group">
+                <div class="username">${escapeHtml(data.username)}</div>
+                <div class="message-time">${time}</div>
+            </div>
+            ${deleteButton}
         </div>
         ${contentHtml}
     `;
+    
     messagesDiv.appendChild(messageDiv);
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
@@ -98,11 +119,16 @@ function displaySystemMessage(data) {
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
+// ✅ ИСПРАВЛЕНО: теперь отправляем текущий канал
 function sendMessage() {
     const messageInput = document.getElementById('messageInput');
     const text = messageInput.value.trim();
     if (text && currentUser && socket) {
-        socket.emit('message', { username: currentUser, text: text });
+        socket.emit('message', { 
+            username: currentUser, 
+            text: text,
+            channel: currentChannel || 'болталка'  // ← ДОБАВЛЕНО!
+        });
         messageInput.value = '';
     }
 }
@@ -167,4 +193,43 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// Удаление сообщения
+async function deleteMessage(messageId) {
+    if (!confirm('Удалить сообщение?')) return;
+    
+    try {
+        socket.emit('delete_message', {
+            messageId: messageId,
+            username: currentUser
+        });
+    } catch (error) {
+        console.error('Ошибка удаления:', error);
+        showToast('Ошибка при удалении сообщения');
+    }
+}
+
+// Показ уведомления
+function showToast(message) {
+    let toast = document.getElementById('toastNotification');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'toastNotification';
+        toast.className = 'toast-notification';
+        document.body.appendChild(toast);
+    }
+    
+    toast.textContent = message;
+    toast.classList.add('show');
+    
+    setTimeout(() => {
+        toast.classList.remove('show');
+    }, 3000);
+}
+
+// Обработка ошибки от сервера
+function handleError(message) {
+    console.error('❌', message);
+    showToast(message);
 }

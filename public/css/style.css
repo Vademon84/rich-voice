@@ -445,3 +445,115 @@
     font-size: 12px;
     padding: 6px 12px;
 }
+
+/* ========== КАНАЛЫ ========== */
+.channels-list {
+    flex: 1;
+    padding: 10px;
+    overflow-y: auto;
+}
+
+.channel {
+    padding: 10px 12px;
+    margin-bottom: 5px;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.channel:hover {
+    background: #3a3d44;
+}
+
+.channel.active {
+    background: #00d26a;
+    color: white;
+}
+
+.channel-icon {
+    font-size: 18px;
+}
+
+.channel-name {
+    font-weight: 500;
+}
+
+/* ========== УДАЛЕНИЕ СООБЩЕНИЙ ========== */
+.message-actions {
+    display: none;
+    gap: 5px;
+    margin-left: 10px;
+}
+
+.message:hover .message-actions {
+    display: flex;
+}
+
+.message-delete-btn {
+    background: transparent;
+    border: none;
+    color: #ed4245;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 2px 5px;
+    border-radius: 3px;
+    transition: background 0.2s;
+}
+
+.message-delete-btn:hover {
+    background: rgba(237, 66, 69, 0.2);
+}
+
+/* ========== ЗАГОЛОВОК КАНАЛА ========== */
+.channel-header {
+    background: #2f3136;
+    padding: 15px 20px;
+    border-bottom: 1px solid #202225;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.channel-header h2 {
+    font-size: 18px;
+    color: #fff;
+}
+
+/* ========== УВЕДОМЛЕНИЯ ========== */
+.toast-notification {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #ed4245;
+    color: white;
+    padding: 12px 20px;
+    border-radius: 5px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    display: none;
+    animation: slideIn 0.3s ease;
+    z-index: 1000;
+}
+
+.toast-notification.show {
+    display: block;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Адаптация sidebar */
+.sidebar {
+    display: flex;
+    flex-direction: column;
+}

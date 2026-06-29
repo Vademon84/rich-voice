@@ -40,6 +40,7 @@ async function handleAudioUpload(event) {
         console.log('✅ Аудио загружено:', result.url);
         socket.emit('audio_upload', {
             username: currentUser,
+            channel: currentChannel || 'болталка',  // ← ДОБАВЛЕНО
             fileUrl: result.url,
             fileName: result.fileName
         });
@@ -62,6 +63,7 @@ async function handleImageUpload(event) {
         console.log('✅ Изображение загружено:', result.url);
         socket.emit('image_upload', {
             username: currentUser,
+            channel: currentChannel || 'болталка',  // ← ДОБАВЛЕНО
             fileUrl: result.url,
             fileName: result.fileName
         });

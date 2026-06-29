@@ -106,10 +106,13 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-// Получение истории сообщений
+// Получение истории сообщений по каналу
 app.get('/api/messages', async (req, res) => {
   try {
-    const messages = await Message.find().sort({ createdAt: -1 }).limit(50);
+    const channel = req.query.channel || 'болталка';
+    const messages = await Message.find({ channel: channel })
+      .sort({ createdAt: -1 })
+      .limit(50);
     res.json(messages.reverse());
   } catch (error) {
     console.error('❌ Ошибка получения сообщений:', error);
@@ -145,20 +148,29 @@ io.on('connection', (socket) => {
     });
   });
 
-  // Текстовое сообщение
+  // Переключение канала
+  socket.on('channel_switch', (data) => {
+    console.log(`📺 ${data.username} переключился на канал ${data.channel}`);
+  });
+
+  // Текстовое сообщение с каналом
   socket.on('message', async (data) => {
-    console.log('📨 Сообщение:', data);
+    console.log('📨 Сообщение в канал', data.channel + ':', data);
     
     try {
       const message = new Message({
         username: data.username,
+        channel: data.channel || 'болталка',
         type: 'text',
         text: data.text
       });
       await message.save();
       
+      // ✅ ДОБАВЛЕНО: передаём _id для возможности удаления
       io.emit('message', {
+        _id: message._id,
         username: data.username,
+        channel: data.channel || 'болталка',
         type: 'text',
         text: data.text,
         createdAt: message.createdAt
@@ -168,9 +180,39 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Удаление сообщения
+  socket.on('delete_message', async (data) => {
+    console.log('🗑️ Удаление сообщения:', data.messageId, 'пользователем', data.username);
+    
+    try {
+      const message = await Message.findById(data.messageId);
+      
+      if (!message) {
+        socket.emit('error_message', 'Сообщение не найдено');
+        return;
+      }
+      
+      // Разрешаем удалять только свои сообщения
+      if (message.username !== data.username) {
+        socket.emit('error_message', 'Можно удалять только свои сообщения');
+        return;
+      }
+      
+      await Message.findByIdAndDelete(data.messageId);
+      
+      io.emit('message_deleted', {
+        messageId: data.messageId,
+        channel: message.channel
+      });
+    } catch (error) {
+      console.error('❌ Ошибка удаления сообщения:', error);
+      socket.emit('error_message', 'Ошибка при удалении');
+    }
+  });
+
   // Загрузка изображения
   socket.on('image_upload', async (data) => {
-    console.log('🖼️ Загрузка изображения от:', data.username);
+    console.log('🖼️ Загрузка изображения от:', data.username, 'в канал:', data.channel);
     
     try {
       let fileUrl = data.fileUrl;
@@ -194,14 +236,18 @@ io.on('connection', (socket) => {
       
       const message = new Message({
         username: data.username,
+        channel: data.channel || 'болталка',  // ✅ ДОБАВЛЕНО
         type: 'image',
         fileUrl: fileUrl,
         fileName: data.fileName
       });
       await message.save();
       
+      // ✅ ДОБАВЛЕНО: передаём _id и channel
       io.emit('message', {
+        _id: message._id,
         username: data.username,
+        channel: data.channel || 'болталка',
         type: 'image',
         fileUrl: fileUrl,
         fileName: data.fileName,
@@ -214,7 +260,7 @@ io.on('connection', (socket) => {
 
   // Загрузка аудио
   socket.on('audio_upload', async (data) => {
-    console.log('🎵 Загрузка аудио от:', data.username, 'Размер base64:', data.fileUrl.length);
+    console.log('🎵 Загрузка аудио от:', data.username, 'в канал:', data.channel);
     
     try {
       let fileUrl = data.fileUrl;
@@ -238,14 +284,18 @@ io.on('connection', (socket) => {
       
       const message = new Message({
         username: data.username,
+        channel: data.channel || 'болталка',  // ✅ ДОБАВЛЕНО
         type: 'audio',
         fileUrl: fileUrl,
         fileName: data.fileName
       });
       await message.save();
       
+      // ✅ ДОБАВЛЕНО: передаём _id и channel
       io.emit('message', {
+        _id: message._id,
         username: data.username,
+        channel: data.channel || 'болталка',
         type: 'audio',
         fileUrl: fileUrl,
         fileName: data.fileName,

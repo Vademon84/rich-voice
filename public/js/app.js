@@ -15,13 +15,33 @@ function showChat() {
     });
     
     socket.emit('user_join', currentUser);
-    loadMessages();
     
-    // Чат
-    socket.on('message', (data) => displayMessage(data));
+    // Обработчики Socket.IO
+    // Показываем сообщение только если оно из текущего канала
+    socket.on('message', (data) => {
+        if (data.channel === currentChannel) {
+            displayMessage(data);
+        }
+    });
+    
+    socket.on('message_deleted', (data) => {
+        const messageEl = document.getElementById(`msg_${data.messageId}`);
+        if (messageEl) {
+            messageEl.remove();
+        }
+    });
+    
     socket.on('system_message', (data) => displaySystemMessage(data));
     socket.on('online_users', (users) => updateOnlineList(users));
     socket.on('audio_control', (data) => handleRemoteAudioControl(data));
+    
+    // Обработка ошибок от сервера
+    socket.on('error_message', (message) => {
+        console.error('❌ Ошибка сервера:', message);
+        if (typeof showToast === 'function') {
+            showToast(message);
+        }
+    });
     
     // Голосовая комната
     socket.on('voice_participants', async (participants) => {
@@ -62,7 +82,13 @@ window.addEventListener('DOMContentLoaded', () => {
     if (savedUser) {
         currentUser = savedUser;
         showChat();
+        
+        // Инициализация каналов (после подключения сокета)
+        if (typeof initChannels === 'function') {
+            initChannels();
+        }
     }
+    
     initEmojiPanel();
     initPTT();
     

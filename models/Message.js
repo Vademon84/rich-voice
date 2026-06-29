@@ -5,6 +5,11 @@ const messageSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  channel: {
+    type: String,
+    default: 'болталка',
+    enum: ['болталка', 'музыка', 'игры', 'питница']
+  },
   type: {
     type: String,
     enum: ['text', 'image', 'audio'],

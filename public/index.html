@@ -1,11 +1,10 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RICH-VOICE</title>
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
     <div class="auth-container" id="authContainer">
@@ -22,6 +21,12 @@
     <div class="chat-wrapper" id="chatContainer">
         <div class="sidebar">
             <div class="sidebar-header">
+                <h2>📺 Каналы</h2>
+            </div>
+            <div class="channels-list" id="channelsList">
+                <!-- Каналы будут добавлены через JS -->
+            </div>
+            <div class="sidebar-header" style="margin-top: 20px;">
                 <h2>🟢 В сети</h2>
             </div>
             <div class="online-list" id="onlineList"></div>
@@ -30,7 +35,7 @@
         
         <div class="chat-main">
             <div class="header">
-                <h1>💬 RICH-VOICE - Общий чат</h1>
+                <h2 id="channelHeader">💬 Болталка</h2>
                 <div class="user-info">
                     <button class="join-voice-btn" id="joinVoiceBtn" onclick="toggleVoiceRoom()">🎤 Голосовая комната</button>
                     <span class="username-display" id="currentUser"></span>
@@ -81,6 +86,7 @@
     <script src="js/config.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/chat.js"></script>
+    <script src="js/channels.js"></script>
     <script src="js/emoji.js"></script>
     <script src="js/upload.js"></script>
     <script src="js/voice.js"></script>
