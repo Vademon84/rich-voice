@@ -31,13 +31,18 @@ function showChat() {
         }
     });
     
-    // ✅ НОВОЕ: Обновление реакций на сообщения
+     // ✅ НОВОЕ: Обновление реакций на сообщения
     socket.on('reaction_update', (data) => {
+        console.log(`📥 Получено обновление реакций для ${data.messageId}:`, data.reactions);
+        
         // Обновляем реакции только если сообщение в текущем канале
         if (data.channel === currentChannel) {
             if (typeof renderReactions === 'function') {
                 renderReactions(data.messageId, data.reactions);
+                console.log(`✅ Реакции отображены для ${data.messageId}`);
             }
+        } else {
+            console.log(`⏭️ Пропускаем обновление - сообщение не в текущем канале`);
         }
     });
     

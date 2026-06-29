@@ -118,13 +118,20 @@ const REACTION_EMOJIS = ['❤️', '😂', '👍', '😮', '😢', '🎉'];
 // ✅ НОВОЕ: Отображение реакций под сообщением
 function renderReactions(messageId, reactions) {
     const reactionsDiv = document.getElementById(`reactions_${messageId}`);
-    if (!reactionsDiv) return;
+    
+    if (!reactionsDiv) {
+        console.log(`⚠️ Не найден блок reactions_${messageId}`);
+        return;
+    }
     
     reactionsDiv.innerHTML = '';
     
     if (!reactions || Object.keys(reactions).length === 0) {
+        console.log(`ℹ️ Нет реакций для ${messageId}`);
         return;
     }
+    
+    console.log(`🎨 Отображаем реакции для ${messageId}:`, reactions);
     
     for (const [emoji, users] of Object.entries(reactions)) {
         if (users.length === 0) continue;
@@ -143,6 +150,8 @@ function renderReactions(messageId, reactions) {
         
         reactionsDiv.appendChild(reactionBtn);
     }
+    
+    console.log(`✅ Отображено ${Object.keys(reactions).length} реакций`);
 }
 
 // ✅ НОВОЕ: Показать панель выбора реакции (не закрывается после выбора)
@@ -282,9 +291,12 @@ function displayMessage(data) {
     `;
     
     messagesDiv.appendChild(messageDiv);
+
+        messagesDiv.appendChild(messageDiv);
     
     // ✅ НОВОЕ: Отображаем существующие реакции
     if (data._id && data.reactions) {
+        console.log(`📋 Загружаем реакции для ${data._id}:`, data.reactions);
         renderReactions(data._id, data.reactions);
     }
     
