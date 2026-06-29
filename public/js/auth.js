@@ -75,14 +75,15 @@ function logout() {
     document.getElementById('errorMessage').textContent = '';
 }
 
-// ✅ НОВОЕ: Загрузка аватара пользователя
+// ========== ФУНКЦИИ ДЛЯ АВАТАРОВ ==========
+
+// Загрузка аватара пользователя
 async function loadUserAvatar(username) {
     try {
         const response = await fetch(`/api/user/avatar/${username}`);
         const data = await response.json();
         
         if (data.avatar) {
-            // Сохраняем в localStorage
             localStorage.setItem('richvoice_avatar', data.avatar);
             return data.avatar;
         }
@@ -94,7 +95,7 @@ async function loadUserAvatar(username) {
     }
 }
 
-// ✅ НОВОЕ: Обновление аватара
+// Обновление аватара
 async function updateUserAvatar(avatarUrl) {
     try {
         const response = await fetch('/api/user/avatar', {
@@ -121,7 +122,7 @@ async function updateUserAvatar(avatarUrl) {
     }
 }
 
-// ✅ НОВОЕ: Отображение аватара текущего пользователя
+// Отображение аватара текущего пользователя
 function updateCurrentUserAvatar(avatarUrl) {
     const currentUserDisplay = document.getElementById('currentUser');
     if (!currentUserDisplay) return;
@@ -143,4 +144,17 @@ function updateCurrentUserAvatar(avatarUrl) {
     span.textContent = currentUser;
     span.className = 'username-text';
     currentUserDisplay.appendChild(span);
+    
+    // Обновляем превью в модальном окне аватара
+    const modalPreview = document.getElementById('currentAvatarPreview');
+    if (modalPreview) {
+        if (avatarUrl) {
+            modalPreview.src = avatarUrl;
+            modalPreview.style.display = 'block';
+        } else {
+            // Дефолтная аватарка, если своей нет
+            modalPreview.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser)}&background=random&color=fff&size=128`;
+            modalPreview.style.display = 'block';
+        }
+    }
 }
