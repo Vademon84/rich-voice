@@ -1,4 +1,5 @@
 // Модуль чата
+
 function formatDateTime(dateString) {
     const date = new Date(dateString);
     const today = new Date();
@@ -26,6 +27,40 @@ function formatDateTime(dateString) {
     }
 }
 
+// ========== АВАТАРЫ ==========
+
+// Получение аватара пользователя
+async function getUserAvatar(username) {
+    const cached = localStorage.getItem(`avatar_${username}`);
+    if (cached) {
+        return cached;
+    }
+    
+    try {
+        const response = await fetch(`/api/user/avatar/${username}`);
+        const data = await response.json();
+        
+        if (data.avatar) {
+            localStorage.setItem(`avatar_${username}`, data.avatar);
+            return data.avatar;
+        }
+        
+        return '';
+    } catch (error) {
+        console.error('Ошибка получения аватара:', error);
+        return '';
+    }
+}
+
+// Создание HTML для аватара
+function createAvatarHTML(username, avatarUrl, size = 'small') {
+    const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=random&color=fff&size=128`;
+    const src = avatarUrl || defaultAvatar;
+    return `<img src="${src}" alt="${username}" class="avatar avatar-${size}" title="${username}">`;
+}
+
+// ========== СООБЩЕНИЯ ==========
+
 async function loadMessages(channel) {
     const messagesDiv = document.getElementById('messages');
     const targetChannel = channel || currentChannel || 'болталка';
@@ -45,7 +80,7 @@ async function loadMessages(channel) {
                 fileName: msg.fileName,
                 createdAt: msg.createdAt,
                 _id: msg._id,
-                reactions: msg.reactions || {}  // ✅ Передаём реакции
+                reactions: msg.reactions || {}
             });
         });
         
@@ -55,14 +90,14 @@ async function loadMessages(channel) {
     }
 }
 
-// ✅ НОВОЕ: Подсветка @упоминаний
+// Подсветка @упоминаний
 function highlightMentions(text) {
     return text.replace(/@(\w+)/g, (match, username) => {
         return `<span class="mention" onclick="openPrivateChat('${username}')">${match}</span>`;
     });
 }
 
-// ✅ НОВОЕ: Проверка, упомянули ли нас
+// Проверка, упомянули ли нас
 function checkMention(text) {
     if (!text) return;
     const mentionPattern = new RegExp(`@${currentUser}\\b`, 'i');
@@ -72,7 +107,7 @@ function checkMention(text) {
     }
 }
 
-// ✅ НОВОЕ: Звуковое уведомление
+// Звуковое уведомление
 function playNotificationSound() {
     try {
         const audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -95,7 +130,7 @@ function playNotificationSound() {
     }
 }
 
-// ✅ НОВОЕ: Всплывающее уведомление
+// Всплывающее уведомление
 function showNotification(text) {
     const notification = document.createElement('div');
     notification.className = 'notification-popup';
@@ -112,15 +147,14 @@ function showNotification(text) {
     }, 3000);
 }
 
-// ✅ НОВОЕ: Список доступных реакций
+// Список доступных реакций
 const REACTION_EMOJIS = ['❤️', '😂', '👍', '😮', '😢', '🎉'];
 
-// ✅ НОВОЕ: Отображение реакций под сообщением
+// Отображение реакций под сообщением
 function renderReactions(messageId, reactions) {
     const reactionsDiv = document.getElementById(`reactions_${messageId}`);
-    
     if (!reactionsDiv) {
-        console.log(`⚠️ Не найден блок reactions_${messageId}`);
+        console.log(`️ Не найден блок reactions_${messageId}`);
         return;
     }
     
@@ -139,7 +173,6 @@ function renderReactions(messageId, reactions) {
         const reactionBtn = document.createElement('button');
         reactionBtn.className = 'reaction-btn';
         
-        // Если текущий пользователь уже поставил эту реакцию - выделяем
         if (users.includes(currentUser)) {
             reactionBtn.classList.add('active');
         }
@@ -154,9 +187,8 @@ function renderReactions(messageId, reactions) {
     console.log(`✅ Отображено ${Object.keys(reactions).length} реакций`);
 }
 
-// ✅ НОВОЕ: Показать панель выбора реакции (не закрывается после выбора)
+// Показать панель выбора реакции
 function showReactionPicker(messageId) {
-    // Закрываем все открытые панели
     const existingPicker = document.querySelector('.reaction-picker');
     if (existingPicker) {
         existingPicker.remove();
@@ -176,14 +208,12 @@ function showReactionPicker(messageId) {
         btn.onclick = (e) => {
             e.stopPropagation();
             toggleReaction(messageId, emoji);
-            // ✅ НЕ закрываем панель - пользователь может поставить ещё реакции
         };
         picker.appendChild(btn);
     });
     
     messageDiv.appendChild(picker);
     
-    // Закрываем панель при клике вне её
     setTimeout(() => {
         document.addEventListener('click', function closePicker(e) {
             if (!picker.contains(e.target)) {
@@ -194,13 +224,12 @@ function showReactionPicker(messageId) {
     }, 100);
 }
 
-// ✅ НОВОЕ: Добавить/убрать реакцию (toggle) с задержкой
+// Добавить/убрать реакцию
 let lastReactionTime = 0;
 
 function toggleReaction(messageId, emoji) {
     if (!socket) return;
     
-    // ✅ Добавляем задержку 300мс между кликами, чтобы избежать race condition
     const now = Date.now();
     if (now - lastReactionTime < 300) {
         console.log(' Слишком быстрый клик, игнорируем');
@@ -208,7 +237,7 @@ function toggleReaction(messageId, emoji) {
     }
     lastReactionTime = now;
     
-    console.log(`📨 Отправляем реакцию ${emoji} на сообщение ${messageId}`);
+    console.log(` Отправляем реакцию ${emoji} на сообщение ${messageId}`);
     
     socket.emit('toggle_reaction', {
         messageId: messageId,
@@ -217,13 +246,21 @@ function toggleReaction(messageId, emoji) {
     });
 }
 
-function displayMessage(data) {
+// Отображение сообщения (с аватаром)
+async function displayMessage(data) {
     const messagesDiv = document.getElementById('messages');
     const messageDiv = document.createElement('div');
     messageDiv.className = 'message';
     messageDiv.id = `msg_${data._id || Date.now()}`;
     
     const time = data.createdAt ? formatDateTime(data.createdAt) : 'Только что';
+    
+    // Получаем аватар пользователя
+    let avatarHTML = '';
+    if (data.username) {
+        const avatarUrl = await getUserAvatar(data.username);
+        avatarHTML = createAvatarHTML(data.username, avatarUrl, 'small');
+    }
     
     let contentHtml = '';
     
@@ -253,7 +290,6 @@ function displayMessage(data) {
         `;
     }
     
-    // Кнопка удаления (только для своих сообщений)
     const canDelete = data.username === currentUser && data._id;
     const deleteButton = canDelete ? `
         <div class="message-actions">
@@ -263,23 +299,24 @@ function displayMessage(data) {
         </div>
     ` : '';
     
-    // ✅ НОВОЕ: Кнопка добавления реакции
     const reactionButton = data._id ? `
         <button class="add-reaction-btn" onclick="showReactionPicker('${data._id}')" title="Добавить реакцию">
             😊
         </button>
     ` : '';
     
-    // ✅ НОВОЕ: Блок для отображения реакций
     const reactionsBlock = data._id ? `
         <div class="reactions-container" id="reactions_${data._id}"></div>
     ` : '';
     
     messageDiv.innerHTML = `
         <div class="message-header">
-            <div class="message-username-group">
-                <div class="username">${escapeHtml(data.username)}</div>
-                <div class="message-time">${time}</div>
+            <div class="message-user-info">
+                ${avatarHTML}
+                <div class="message-username-group">
+                    <div class="username">${escapeHtml(data.username)}</div>
+                    <div class="message-time">${time}</div>
+                </div>
             </div>
             <div class="message-header-actions">
                 ${reactionButton}
@@ -291,12 +328,8 @@ function displayMessage(data) {
     `;
     
     messagesDiv.appendChild(messageDiv);
-
-        messagesDiv.appendChild(messageDiv);
     
-    // ✅ НОВОЕ: Отображаем существующие реакции
     if (data._id && data.reactions) {
-        console.log(`📋 Загружаем реакции для ${data._id}:`, data.reactions);
         renderReactions(data._id, data.reactions);
     }
     
@@ -364,14 +397,19 @@ function handleRemoteAudioControl(data) {
     });
 }
 
-function updateOnlineList(users) {
+// Список онлайн с аватарами
+async function updateOnlineList(users) {
     const onlineList = document.getElementById('onlineList');
     const onlineCount = document.getElementById('onlineCount');
     
     onlineList.innerHTML = '';
-    users.forEach(user => {
+    
+    for (const user of users) {
         const userDiv = document.createElement('div');
         userDiv.className = 'online-user';
+        
+        const avatarUrl = await getUserAvatar(user);
+        const avatarHTML = createAvatarHTML(user, avatarUrl, 'tiny');
         
         const writeButton = user !== currentUser ? `
             <button class="write-btn" onclick="openPrivateChat('${user}')" title="Написать ЛС">
@@ -380,12 +418,13 @@ function updateOnlineList(users) {
         ` : '';
         
         userDiv.innerHTML = `
-            <div class="status-dot"></div>
+            ${avatarHTML}
             <span class="username-text">${user}</span>
             ${writeButton}
         `;
         onlineList.appendChild(userDiv);
-    });
+    }
+    
     onlineCount.textContent = `Онлайн: ${users.length}`;
 }
 
