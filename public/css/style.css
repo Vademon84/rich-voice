@@ -840,3 +840,175 @@
     font-size: 12px;
     font-weight: bold;
 }
+
+/* ========== АВАТАРЫ ========== */
+
+/* Аватар в сообщениях */
+.avatar {
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.avatar-small {
+    width: 40px;
+    height: 40px;
+    margin-right: 10px;
+}
+
+.avatar-tiny {
+    width: 28px;
+    height: 28px;
+    margin-right: 8px;
+}
+
+.avatar-medium {
+    width: 80px;
+    height: 80px;
+}
+
+.avatar-large {
+    width: 120px;
+    height: 120px;
+}
+
+/* Информация о пользователе в сообщении */
+.message-user-info {
+    display: flex;
+    align-items: center;
+    flex: 1;
+}
+
+/* Аватар текущего пользователя в шапке */
+.current-user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    margin-right: 8px;
+    object-fit: cover;
+    border: 2px solid #00d26a;
+}
+
+/* Кнопка смены аватара */
+.change-avatar-btn {
+    background: #5865f2;
+    border: none;
+    border-radius: 5px;
+    color: white;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 13px;
+    margin-left: 10px;
+    transition: background 0.2s;
+}
+
+.change-avatar-btn:hover {
+    background: #4752c4;
+}
+
+/* Модальное окно смены аватара */
+.avatar-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 3000;
+    justify-content: center;
+    align-items: center;
+}
+
+.avatar-modal.show {
+    display: flex;
+}
+
+.avatar-modal-content {
+    background: #2f3136;
+    border-radius: 10px;
+    padding: 30px;
+    width: 400px;
+    max-width: 90%;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.avatar-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.avatar-modal-header h3 {
+    color: white;
+    font-size: 18px;
+}
+
+.close-avatar-modal {
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+}
+
+.close-avatar-modal:hover {
+    color: #ed4245;
+}
+
+.avatar-preview {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.avatar-preview img {
+    border-radius: 50%;
+    border: 3px solid #00d26a;
+}
+
+.avatar-upload-btn {
+    display: block;
+    width: 100%;
+    padding: 12px;
+    background: #00d26a;
+    border: none;
+    border-radius: 5px;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 14px;
+    margin-bottom: 10px;
+}
+
+.avatar-upload-btn:hover {
+    background: #00b85c;
+}
+
+.avatar-remove-btn {
+    display: block;
+    width: 100%;
+    padding: 12px;
+    background: #ed4245;
+    border: none;
+    border-radius: 5px;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.avatar-remove-btn:hover {
+    background: #c03537;
+}
+
+/* Обновляем отображение имени пользователя в шапке */
+#currentUser {
+    display: flex;
+    align-items: center;
+}
+
+.username-text {
+    color: #00d26a;
+    font-weight: bold;
+}
