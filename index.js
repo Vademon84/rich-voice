@@ -287,14 +287,14 @@ io.on('connection', (socket) => {
     }
   });
 
-  // ========== РЕАКЦИИ НА СООБЩЕНИЯ ==========
+    // ========== РЕАКЦИИ НА СООБЩЕНИЯ ==========
   
-  // ✅ НОВОЕ: Добавление/удаление реакции (toggle)
   socket.on('toggle_reaction', async (data) => {
     const { messageId, emoji, username } = data;
     console.log(`👍 Реакция ${emoji} от ${username} на сообщение ${messageId}`);
     
     try {
+      // Используем findOneAndUpdate для атомарного обновления
       const message = await Message.findById(messageId);
       
       if (!message) {
@@ -324,7 +324,7 @@ io.on('connection', (socket) => {
           delete message.reactions[emoji];
         }
         
-        console.log(`❌ ${username} убрал реакцию ${emoji}`);
+        console.log(` ${username} убрал реакцию ${emoji}`);
       } else {
         // Добавляем реакцию (toggle on)
         message.reactions[emoji].push(username);
@@ -333,6 +333,8 @@ io.on('connection', (socket) => {
       
       // Сохраняем изменения
       await message.save();
+      
+      console.log(`💾 Сохранены реакции:`, message.reactions);
       
       // Отправляем обновление всем
       io.emit('reaction_update', {

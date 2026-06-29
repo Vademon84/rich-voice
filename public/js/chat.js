@@ -151,7 +151,7 @@ function showReactionPicker(messageId) {
     const existingPicker = document.querySelector('.reaction-picker');
     if (existingPicker) {
         existingPicker.remove();
-        return; // Если панель уже была открыта - закрываем её
+        return;
     }
     
     const messageDiv = document.getElementById(`msg_${messageId}`);
@@ -165,14 +165,13 @@ function showReactionPicker(messageId) {
         btn.className = 'reaction-picker-btn';
         btn.textContent = emoji;
         btn.onclick = (e) => {
-            e.stopPropagation(); // Предотвращаем закрытие панели
+            e.stopPropagation();
             toggleReaction(messageId, emoji);
             // ✅ НЕ закрываем панель - пользователь может поставить ещё реакции
         };
         picker.appendChild(btn);
     });
     
-    // Позиционируем панель рядом с сообщением
     messageDiv.appendChild(picker);
     
     // Закрываем панель при клике вне её
@@ -186,9 +185,21 @@ function showReactionPicker(messageId) {
     }, 100);
 }
 
-// ✅ НОВОЕ: Добавить/убрать реакцию (toggle)
+// ✅ НОВОЕ: Добавить/убрать реакцию (toggle) с задержкой
+let lastReactionTime = 0;
+
 function toggleReaction(messageId, emoji) {
     if (!socket) return;
+    
+    // ✅ Добавляем задержку 300мс между кликами, чтобы избежать race condition
+    const now = Date.now();
+    if (now - lastReactionTime < 300) {
+        console.log(' Слишком быстрый клик, игнорируем');
+        return;
+    }
+    lastReactionTime = now;
+    
+    console.log(`📨 Отправляем реакцию ${emoji} на сообщение ${messageId}`);
     
     socket.emit('toggle_reaction', {
         messageId: messageId,
