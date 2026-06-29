@@ -29,7 +29,6 @@ function formatDateTime(dateString) {
 
 // ========== АВАТАРЫ ==========
 
-// Получение аватара пользователя
 async function getUserAvatar(username) {
     const cached = localStorage.getItem(`avatar_${username}`);
     if (cached) {
@@ -52,7 +51,6 @@ async function getUserAvatar(username) {
     }
 }
 
-// Создание HTML для аватара
 function createAvatarHTML(username, avatarUrl, size = 'small') {
     const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=random&color=fff&size=128`;
     const src = avatarUrl || defaultAvatar;
@@ -90,14 +88,12 @@ async function loadMessages(channel) {
     }
 }
 
-// Подсветка @упоминаний
 function highlightMentions(text) {
     return text.replace(/@(\w+)/g, (match, username) => {
         return `<span class="mention" onclick="openPrivateChat('${username}')">${match}</span>`;
     });
 }
 
-// Проверка, упомянули ли нас
 function checkMention(text) {
     if (!text) return;
     const mentionPattern = new RegExp(`@${currentUser}\\b`, 'i');
@@ -107,7 +103,6 @@ function checkMention(text) {
     }
 }
 
-// Звуковое уведомление
 function playNotificationSound() {
     try {
         const audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -130,7 +125,6 @@ function playNotificationSound() {
     }
 }
 
-// Всплывающее уведомление
 function showNotification(text) {
     const notification = document.createElement('div');
     notification.className = 'notification-popup';
@@ -147,25 +141,19 @@ function showNotification(text) {
     }, 3000);
 }
 
-// Список доступных реакций
 const REACTION_EMOJIS = ['❤️', '😂', '👍', '😮', '😢', '🎉'];
 
-// Отображение реакций под сообщением
 function renderReactions(messageId, reactions) {
     const reactionsDiv = document.getElementById(`reactions_${messageId}`);
     if (!reactionsDiv) {
-        console.log(`️ Не найден блок reactions_${messageId}`);
         return;
     }
     
     reactionsDiv.innerHTML = '';
     
     if (!reactions || Object.keys(reactions).length === 0) {
-        console.log(`ℹ️ Нет реакций для ${messageId}`);
         return;
     }
-    
-    console.log(`🎨 Отображаем реакции для ${messageId}:`, reactions);
     
     for (const [emoji, users] of Object.entries(reactions)) {
         if (users.length === 0) continue;
@@ -183,11 +171,8 @@ function renderReactions(messageId, reactions) {
         
         reactionsDiv.appendChild(reactionBtn);
     }
-    
-    console.log(`✅ Отображено ${Object.keys(reactions).length} реакций`);
 }
 
-// Показать панель выбора реакции
 function showReactionPicker(messageId) {
     const existingPicker = document.querySelector('.reaction-picker');
     if (existingPicker) {
@@ -224,7 +209,6 @@ function showReactionPicker(messageId) {
     }, 100);
 }
 
-// Добавить/убрать реакцию
 let lastReactionTime = 0;
 
 function toggleReaction(messageId, emoji) {
@@ -232,12 +216,9 @@ function toggleReaction(messageId, emoji) {
     
     const now = Date.now();
     if (now - lastReactionTime < 300) {
-        console.log(' Слишком быстрый клик, игнорируем');
         return;
     }
     lastReactionTime = now;
-    
-    console.log(` Отправляем реакцию ${emoji} на сообщение ${messageId}`);
     
     socket.emit('toggle_reaction', {
         messageId: messageId,
@@ -246,7 +227,6 @@ function toggleReaction(messageId, emoji) {
     });
 }
 
-// Отображение сообщения (с аватаром)
 async function displayMessage(data) {
     const messagesDiv = document.getElementById('messages');
     const messageDiv = document.createElement('div');
@@ -255,7 +235,6 @@ async function displayMessage(data) {
     
     const time = data.createdAt ? formatDateTime(data.createdAt) : 'Только что';
     
-    // Получаем аватар пользователя
     let avatarHTML = '';
     if (data.username) {
         const avatarUrl = await getUserAvatar(data.username);
@@ -397,7 +376,6 @@ function handleRemoteAudioControl(data) {
     });
 }
 
-// Список онлайн с аватарами
 async function updateOnlineList(users) {
     const onlineList = document.getElementById('onlineList');
     const onlineCount = document.getElementById('onlineCount');
