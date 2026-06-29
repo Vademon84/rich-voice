@@ -162,7 +162,8 @@ io.on('connection', (socket) => {
         username: data.username,
         channel: data.channel || 'болталка',
         type: 'text',
-        text: data.text
+        text: data.text,
+        reactions: {}  // ✅ Пустой объект реакций
       });
       await message.save();
       
@@ -172,16 +173,16 @@ io.on('connection', (socket) => {
         channel: data.channel || 'болталка',
         type: 'text',
         text: data.text,
+        reactions: {},  // ✅ Передаём пустые реакции
         createdAt: message.createdAt
       });
       
-      // ✅ НОВОЕ: проверяем @упоминания и уведомляем упомянутых
+      // Проверяем @упоминания и уведомляем упомянутых
       const mentionRegex = /@(\w+)/g;
       let match;
       while ((match = mentionRegex.exec(data.text)) !== null) {
         const mentionedUsername = match[1];
         
-        // Ищем socket упомянутого пользователя
         for (const [sid, uname] of onlineUsers.entries()) {
           if (uname === mentionedUsername && sid !== socket.id) {
             io.to(sid).emit('mention_notification', {
@@ -199,7 +200,6 @@ io.on('connection', (socket) => {
 
   // ========== ПРИВАТНЫЕ СООБЩЕНИЯ (ЛС) ==========
   
-  // Отправка приватного сообщения
   socket.on('private_message', async (data) => {
     console.log('🔒 ЛС от', data.username, 'к', data.recipient);
     
@@ -210,27 +210,25 @@ io.on('connection', (socket) => {
         channel: 'private',
         type: 'text',
         text: data.text,
-        isPrivate: true
+        isPrivate: true,
+        reactions: {}
       });
       await message.save();
       
-      // Отправляем обоим пользователям (отправителю и получателю)
       const messageData = {
         _id: message._id,
         username: data.username,
         recipient: data.recipient,
         text: data.text,
+        reactions: {},
         createdAt: message.createdAt
       };
       
-      // Отправитель получает сообщение (для отображения в своём чате)
       socket.emit('private_message', messageData);
       
-      // Получатель получает сообщение
       for (const [sid, uname] of onlineUsers.entries()) {
         if (uname === data.recipient) {
           io.to(sid).emit('private_message', messageData);
-          // Также отправляем уведомление
           io.to(sid).emit('private_notification', {
             from: data.username,
             text: data.text
@@ -243,7 +241,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Загрузка истории ЛС между двумя пользователями
   socket.on('load_private_messages', async (data) => {
     try {
       const messages = await Message.find({
@@ -273,7 +270,6 @@ io.on('connection', (socket) => {
         return;
       }
       
-      // Разрешаем удалять только свои сообщения
       if (message.username !== data.username) {
         socket.emit('error_message', 'Можно удалять только свои сообщения');
         return;
@@ -288,6 +284,65 @@ io.on('connection', (socket) => {
     } catch (error) {
       console.error('❌ Ошибка удаления сообщения:', error);
       socket.emit('error_message', 'Ошибка при удалении');
+    }
+  });
+
+  // ========== РЕАКЦИИ НА СООБЩЕНИЯ ==========
+  
+  // ✅ НОВОЕ: Добавление/удаление реакции (toggle)
+  socket.on('toggle_reaction', async (data) => {
+    const { messageId, emoji, username } = data;
+    console.log(`👍 Реакция ${emoji} от ${username} на сообщение ${messageId}`);
+    
+    try {
+      const message = await Message.findById(messageId);
+      
+      if (!message) {
+        socket.emit('error_message', 'Сообщение не найдено');
+        return;
+      }
+      
+      // Инициализируем reactions если его нет
+      if (!message.reactions) {
+        message.reactions = {};
+      }
+      
+      // Если реакции на этот эмодзи ещё нет - создаём массив
+      if (!message.reactions[emoji]) {
+        message.reactions[emoji] = [];
+      }
+      
+      // Проверяем, ставил ли уже этот пользователь реакцию
+      const userIndex = message.reactions[emoji].indexOf(username);
+      
+      if (userIndex > -1) {
+        // Убираем реакцию (toggle off)
+        message.reactions[emoji].splice(userIndex, 1);
+        
+        // Если массив пустой - удаляем ключ
+        if (message.reactions[emoji].length === 0) {
+          delete message.reactions[emoji];
+        }
+        
+        console.log(`❌ ${username} убрал реакцию ${emoji}`);
+      } else {
+        // Добавляем реакцию (toggle on)
+        message.reactions[emoji].push(username);
+        console.log(`✅ ${username} поставил реакцию ${emoji}`);
+      }
+      
+      // Сохраняем изменения
+      await message.save();
+      
+      // Отправляем обновление всем
+      io.emit('reaction_update', {
+        messageId: messageId,
+        reactions: message.reactions,
+        channel: message.channel
+      });
+    } catch (error) {
+      console.error('❌ Ошибка обновления реакции:', error);
+      socket.emit('error_message', 'Ошибка при добавлении реакции');
     }
   });
 
@@ -320,7 +375,8 @@ io.on('connection', (socket) => {
         channel: data.channel || 'болталка',
         type: 'image',
         fileUrl: fileUrl,
-        fileName: data.fileName
+        fileName: data.fileName,
+        reactions: {}  // ✅ Пустые реакции
       });
       await message.save();
       
@@ -331,6 +387,7 @@ io.on('connection', (socket) => {
         type: 'image',
         fileUrl: fileUrl,
         fileName: data.fileName,
+        reactions: {},  // ✅ Передаём пустые реакции
         createdAt: message.createdAt
       });
     } catch (error) {
@@ -367,7 +424,8 @@ io.on('connection', (socket) => {
         channel: data.channel || 'болталка',
         type: 'audio',
         fileUrl: fileUrl,
-        fileName: data.fileName
+        fileName: data.fileName,
+        reactions: {}  // ✅ Пустые реакции
       });
       await message.save();
       
@@ -378,6 +436,7 @@ io.on('connection', (socket) => {
         type: 'audio',
         fileUrl: fileUrl,
         fileName: data.fileName,
+        reactions: {},  // ✅ Передаём пустые реакции
         createdAt: message.createdAt
       });
     } catch (error) {
