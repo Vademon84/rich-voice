@@ -5,7 +5,6 @@ function showChat() {
     document.getElementById('authContainer').style.display = 'none';
     document.getElementById('chatContainer').style.display = 'flex';
     
-    // Загружаем и отображаем аватар
     if (typeof loadUserAvatar === 'function' && typeof updateCurrentUserAvatar === 'function') {
         loadUserAvatar(currentUser).then(avatarUrl => {
             updateCurrentUserAvatar(avatarUrl);
@@ -43,7 +42,6 @@ function showChat() {
         if (data.channel === currentChannel) {
             if (typeof renderReactions === 'function') {
                 renderReactions(data.messageId, data.reactions);
-                console.log(`✅ Реакции отображены для ${data.messageId}`);
             }
         }
     });
@@ -53,7 +51,7 @@ function showChat() {
     socket.on('audio_control', (data) => handleRemoteAudioControl(data));
     
     socket.on('error_message', (message) => {
-        console.error('❌ Ошибка сервера:', message);
+        console.error(' Ошибка сервера:', message);
         if (typeof showToast === 'function') {
             showToast(message);
         }
@@ -126,12 +124,18 @@ function showChat() {
     });
     
     socket.on('voice_signal', async (data) => {
-        console.log('📡 Получен сигнал от:', data.socketId);
+        console.log(' Получен сигнал от:', data.socketId);
         await handleSignal(data.socketId, data.signal);
     });
     
     socket.on('voice_ice_candidate', (data) => {
         handleIceCandidate(data.socketId, data.candidate);
+    });
+    
+    socket.on('voice_user_speaking', (data) => {
+        if (typeof handleUserSpeaking === 'function') {
+            handleUserSpeaking(data);
+        }
     });
 }
 

@@ -1,4 +1,4 @@
-// Модуль голосовой комнаты с PTT (Push-to-Talk)
+// Модуль голосовой комнаты с PTT
 let localStream = null;
 let peerConnections = new Map();
 let isInVoiceRoom = false;
@@ -12,10 +12,9 @@ let audioContext = null;
 let analyser = null;
 let dataArray = null;
 let speakingTimeout = null;
-const SPEAKING_THRESHOLD = 30; // Порог громкости
-const SPEAKING_DEBOUNCE = 100; // Задержка в мс
+const SPEAKING_THRESHOLD = 30;
+const SPEAKING_DEBOUNCE = 500;
 
-// Инициализация PTT
 function initPTT() {
     updatePTTButton();
     document.addEventListener('keydown', handlePTTKeyDown);
@@ -100,13 +99,11 @@ function togglePTT() {
         localStream.getAudioTracks().forEach(track => {
             track.enabled = false;
         });
-        console.log('🎤 PTT включён - микрофон выключен до нажатия клавиши');
     }
 }
 
 function setPTTKey() {
     const pttKeyBtn = document.getElementById('pttKeyBtn');
-    const originalText = pttKeyBtn.textContent;
     pttKeyBtn.textContent = '⏳ Нажмите клавишу...';
     pttKeyBtn.style.background = '#5865f2';
     const handler = (e) => {
@@ -116,12 +113,10 @@ function setPTTKey() {
         pttKeyBtn.style.background = '#40444b';
         updatePTTButton();
         document.removeEventListener('keydown', handler);
-        console.log('🎤 PTT клавиша установлена:', pttKey);
     };
     document.addEventListener('keydown', handler);
 }
 
-// Голосовая комната
 async function toggleVoiceRoom() {
     if (isInVoiceRoom) {
         leaveVoiceRoom();
@@ -141,20 +136,19 @@ async function joinVoiceRoom() {
             video: false
         });
         
-        console.log('🎤 Микрофон получен');
+        console.log(' Микрофон получен');
         
         isInVoiceRoom = true;
         document.getElementById('voiceRoomPanel').classList.add('active');
         document.getElementById('joinVoiceBtn').textContent = '🎤 В комнате';
         
-        // Инициализация анализатора аудио для индикатора "кто говорит"
+        // Инициализация анализатора аудио
         initAudioAnalyzer();
         
         if (pttEnabled) {
             localStream.getAudioTracks().forEach(track => {
                 track.enabled = false;
             });
-            console.log('🎤 PTT активен - микрофон выключен');
         }
         
         socket.emit('voice_join', { username: currentUser, roomId: CONFIG.ROOM_ID });
@@ -162,7 +156,7 @@ async function joinVoiceRoom() {
         
     } catch (error) {
         console.error('❌ Ошибка доступа к микрофону:', error);
-        alert('Не удалось получить доступ к микрофону. Проверьте разрешения браузера.');
+        alert('Не удалось получить доступ к микрофону.');
     }
 }
 
@@ -179,7 +173,6 @@ function initAudioAnalyzer() {
         analyser.fftSize = 256;
         dataArray = new Uint8Array(analyser.frequencyBinCount);
         
-        // Запускаем мониторинг громкости
         monitorSpeaking();
     } catch (error) {
         console.error('Ошибка инициализации анализатора:', error);
@@ -191,29 +184,24 @@ function monitorSpeaking() {
     
     analyser.getByteFrequencyData(dataArray);
     
-    // Вычисляем среднюю громкость
     let sum = 0;
     for (let i = 0; i < dataArray.length; i++) {
         sum += dataArray[i];
     }
     const average = sum / dataArray.length;
     
-    // Проверяем, говорит ли пользователь
     const isSpeaking = average > SPEAKING_THRESHOLD;
     
     if (isSpeaking) {
-        // Отправляем на сервер, что пользователь говорит
         socket.emit('voice_speaking', {
             roomId: CONFIG.ROOM_ID,
             isSpeaking: true
         });
         
-        // Сбрасываем таймаут
         if (speakingTimeout) {
             clearTimeout(speakingTimeout);
         }
         
-        // Устанавливаем таймаут для окончания речи
         speakingTimeout = setTimeout(() => {
             socket.emit('voice_speaking', {
                 roomId: CONFIG.ROOM_ID,
@@ -223,6 +211,17 @@ function monitorSpeaking() {
     }
     
     requestAnimationFrame(monitorSpeaking);
+}
+
+function handleUserSpeaking(data) {
+    const participant = document.getElementById(`participant_${data.socketId}`);
+    if (participant) {
+        if (data.isSpeaking) {
+            participant.classList.add('speaking');
+        } else {
+            participant.classList.remove('speaking');
+        }
+    }
 }
 
 function leaveVoiceRoom() {
@@ -256,7 +255,7 @@ function leaveVoiceRoom() {
 function toggleMute() {
     if (!localStream) return;
     if (pttEnabled) {
-        alert('PTT включён. Используйте клавишу для управления микрофоном.');
+        alert('PTT включён. Используйте клавишу.');
         return;
     }
 
@@ -333,8 +332,6 @@ async function createPeerConnection(targetSocketId, targetUsername, isInitiator)
                 signal: offer,
                 roomId: CONFIG.ROOM_ID
             });
-            
-            console.log('📤 Отправлен offer для', targetUsername);
         } catch (error) {
             console.error('Ошибка создания offer:', error);
         }
@@ -366,15 +363,12 @@ function setVolume(socketId, value) {
     if (audio) {
         audio.volume = value / 100;
         
-        // Обновляем иконку
         const icon = document.querySelector(`#volume-control_${socketId} .volume-icon`);
         if (icon) {
             if (value == 0) icon.textContent = '🔇';
             else if (value < 50) icon.textContent = '🔉';
             else icon.textContent = '🔊';
         }
-        
-        console.log(`🔊 Громкость для ${socketId}: ${value}%`);
     }
 }
 
@@ -437,11 +431,8 @@ async function handleSignal(socketId, signal) {
             signal: answer,
             roomId: CONFIG.ROOM_ID
         });
-        
-        console.log('📤 Отправлен answer для', socketId);
     } else if (signal.type === 'answer') {
         await pc.setRemoteDescription(new RTCSessionDescription(signal));
-        console.log('✅ Получен answer от', socketId);
     }
 }
 
@@ -489,17 +480,5 @@ function updateVoiceParticipants(participants) {
             <span>${currentUser} (вы)</span>
         `;
         voiceParticipants.appendChild(myDiv);
-    }
-}
-
-// Обработчик обновления статуса "кто говорит"
-function handleUserSpeaking(data) {
-    const participant = document.getElementById(`participant_${data.socketId}`);
-    if (participant) {
-        if (data.isSpeaking) {
-            participant.classList.add('speaking');
-        } else {
-            participant.classList.remove('speaking');
-        }
     }
 }

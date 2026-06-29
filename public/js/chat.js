@@ -78,7 +78,7 @@ async function loadMessages(channel) {
             });
         });
         
-        console.log(`📚 Загружено ${messages.length} сообщений из канала ${targetChannel}`);
+        console.log(` Загружено ${messages.length} сообщений из канала ${targetChannel}`);
     } catch (error) {
         console.error('Ошибка загрузки сообщений:', error);
     }
@@ -137,7 +137,7 @@ function showNotification(text) {
     }, 3000);
 }
 
-const REACTION_EMOJIS = ['❤️', '😂', '', '😮', '😢', '🎉'];
+const REACTION_EMOJIS = ['❤️', '', '👍', '😮', '😢', '🎉'];
 
 function renderReactions(messageId, reactions) {
     const reactionsDiv = document.getElementById(`reactions_${messageId}`);

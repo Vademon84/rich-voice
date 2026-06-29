@@ -580,7 +580,7 @@ io.on('connection', (socket) => {
     });
   });
 
-  // Индикатор "кто говорит"
+    // Индикатор "кто говорит"
   socket.on('voice_speaking', (data) => {
     const { roomId, isSpeaking } = data;
     
