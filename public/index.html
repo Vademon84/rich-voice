@@ -4,127 +4,124 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RICH-VOICE</title>
-    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="auth-container" id="authContainer">
+    <!-- Авторизация -->
+    <div id="authContainer" class="auth-container">
         <div class="auth-box">
             <h2 id="authTitle">Вход в RICH-VOICE</h2>
-            <div class="error-message" id="errorMessage"></div>
-            <input type="text" id="usernameInput" placeholder="Имя пользователя" autocomplete="off">
-            <input type="password" id="passwordInput" placeholder="Пароль">
+            <div id="errorMessage" class="error-message"></div>
+            <input type="text" id="usernameInput" placeholder="Имя пользователя" autocomplete="username">
+            <input type="password" id="passwordInput" placeholder="Пароль" autocomplete="current-password">
             <button id="authButton" onclick="handleAuth()">Войти</button>
-            <div class="switch-link" id="switchLink" onclick="switchAuthMode()">Нет аккаунта? Зарегистрироваться</div>
+            <div id="switchLink" class="switch-link" onclick="switchAuthMode()">Нет аккаунта? Зарегистрироваться</div>
         </div>
     </div>
-    
-    <div class="chat-wrapper" id="chatContainer">
+
+    <!-- Основной чат -->
+    <div id="chatContainer" class="chat-wrapper">
+        <!-- Боковая панель -->
         <div class="sidebar">
             <div class="sidebar-header">
                 <h2>📺 Каналы</h2>
             </div>
-            <div class="channels-list" id="channelsList">
-                <!-- Каналы будут добавлены через JS -->
-            </div>
-            <div class="sidebar-header" style="margin-top: 20px;">
+            <div class="channels-list" id="channelsList"></div>
+            <div class="sidebar-header">
                 <h2>🟢 В сети</h2>
             </div>
             <div class="online-list" id="onlineList"></div>
             <div class="online-count" id="onlineCount">Онлайн: 0</div>
         </div>
-        
+
+        <!-- Основная область чата -->
         <div class="chat-main">
-            <div class="header">
-                <h2 id="channelHeader">💬 Болталка</h2>
+            <!-- Шапка канала -->
+            <div class="channel-header">
+                <h2 id="channelTitle">💬 Болталка</h2>
                 <div class="user-info">
-                    <button class="join-voice-btn" id="joinVoiceBtn" onclick="toggleVoiceRoom()">🎤 Голосовая комната</button>
                     <div id="currentUser"></div>
-                    <button class="change-avatar-btn" onclick="openAvatarModal()" title="Сменить аватар">📷 Аватар</button>
+                    <button class="change-avatar-btn" onclick="openAvatarModal()">📷 Аватар</button>
+                    <button class="join-voice-btn" id="joinVoiceBtn" onclick="toggleVoiceRoom()">🎤 Голосовая комната</button>
                     <button class="logout-btn" onclick="logout()">Выйти</button>
                 </div>
             </div>
-            
+
             <!-- Панель голосовой комнаты -->
-            <div class="voice-room-panel" id="voiceRoomPanel">
+            <div id="voiceRoomPanel" class="voice-room-panel">
                 <div class="voice-room-header">
                     <h3>🎤 Голосовая комната</h3>
                     <div class="voice-controls">
-                        <button class="voice-btn mute" id="muteBtn" onclick="toggleMute()">🎤 Вкл</button>
-                        <button class="voice-btn" id="pttToggleBtn" onclick="togglePTT()" style="background: #40444b;">🔕 PTT: ВЫКЛ</button>
-                        <button class="voice-btn" id="pttKeyBtn" onclick="setPTTKey()" style="background: #40444b;">Клавиша: Пробел</button>
+                        <button id="muteBtn" class="voice-btn mute" onclick="toggleMute()">🎤 Вкл</button>
+                        <button id="pttToggleBtn" class="voice-btn" onclick="togglePTT()">🔕 PTT: ВЫКЛ</button>
+                        <button id="pttKeyBtn" class="voice-btn" onclick="setPTTKey()">Клавиша: Пробел</button>
                         <button class="voice-btn leave" onclick="leaveVoiceRoom()">🚪 Выйти</button>
                     </div>
                 </div>
-                <div class="voice-participants" id="voiceParticipants"></div>
+                <div id="voiceParticipants" class="voice-participants"></div>
             </div>
-            
+
+            <!-- Сообщения -->
             <div class="messages" id="messages"></div>
-            
+
+            <!-- Ввод сообщения -->
             <div class="input-area">
-                <div class="emoji-panel" id="emojiPanel">
-                    <div class="emoji-grid" id="emojiGrid"></div>
-                </div>
-                
                 <div class="input-toolbar">
                     <button class="toolbar-btn" onclick="toggleEmojiPanel()">😊 Эмодзи</button>
-                    <button class="toolbar-btn" onclick="document.getElementById('imageInput').click()">🖼️ Картинка</button>
-                    <button class="toolbar-btn" onclick="document.getElementById('audioInput').click()" style="display: none;">🎵 Музыка</button>
+                    <button class="toolbar-btn" onclick="document.getElementById('fileInput').click()">🖼️ Картинка</button>
+                    <button class="toolbar-btn" onclick="document.getElementById('audioInput').click()">🎵 Музыка</button>
+                    <input type="file" id="fileInput" class="file-input" accept="image/*" onchange="handleFileUpload(event)">
+                    <input type="file" id="audioInput" class="file-input" accept="audio/*" onchange="handleAudioUpload(event)">
                 </div>
-                
+                <div id="emojiPanel" class="emoji-panel">
+                    <div class="emoji-grid" id="emojiGrid"></div>
+                </div>
                 <div class="input-row">
-                    <input type="text" id="messageInput" placeholder="Введите сообщение..." autocomplete="off">
+                    <input type="text" id="messageInput" placeholder="Введите сообщение... (@ для упоминания)">
                     <button onclick="sendMessage()">Отправить</button>
                 </div>
-                
-                <input type="file" id="imageInput" class="file-input" accept="image/*" onchange="handleImageUpload(event)">
-                <input type="file" id="audioInput" class="file-input" accept="audio/*,video/*" onchange="handleAudioUpload(event)">
             </div>
         </div>
     </div>
 
-    <!-- ✅ НОВОЕ: Окно приватного чата -->
-    <div class="private-chat-window" id="privateChatWindow">
+    <!-- Окно приватного чата -->
+    <div id="privateChatWindow" class="private-chat-window">
         <div class="private-chat-header">
-            <span id="privateChatHeader">🔒 ЛС</span>
+            <span>🔒 ЛС с <span id="privateChatUser"></span></span>
             <button class="close-private-chat" onclick="closePrivateChat()">✖️</button>
         </div>
         <div class="private-messages" id="privateMessages"></div>
         <div class="private-input-area">
-            <input type="text" id="privateMessageInput" placeholder="Введите сообщение..." onkeypress="if(event.key==='Enter') sendPrivateMessage()">
+            <input type="text" id="privateMessageInput" placeholder="Сообщение...">
             <button onclick="sendPrivateMessage()">Отправить</button>
         </div>
     </div>
 
-    <!-- ✅ НОВОЕ: Модальное окно смены аватара -->
-    <div class="avatar-modal" id="avatarModal">
+    <!-- Модальное окно аватара -->
+    <div id="avatarModal" class="avatar-modal">
         <div class="avatar-modal-content">
             <div class="avatar-modal-header">
                 <h3>📷 Сменить аватар</h3>
                 <button class="close-avatar-modal" onclick="closeAvatarModal()">✖️</button>
             </div>
             <div class="avatar-preview">
-                <img id="currentAvatarPreview" src="" alt="Текущий аватар" class="avatar-medium">
-                <p style="margin-top: 10px; color: #b9bbbe;">Текущий аватар</p>
+                <img id="currentAvatarPreview" class="avatar-large" alt="Аватар">
             </div>
             <button class="avatar-upload-btn" onclick="document.getElementById('avatarInput').click()">
                 📤 Загрузить новый аватар
             </button>
             <input type="file" id="avatarInput" class="file-input" accept="image/*" onchange="handleAvatarUpload(event)">
-            <button class="avatar-remove-btn" onclick="removeAvatar()">
-                🗑️ Удалить аватар
-            </button>
+            <button class="avatar-remove-btn" onclick="removeAvatar()">🗑️ Удалить аватар</button>
         </div>
     </div>
 
-    <script src="/socket.io/socket.io.js"></script>
-    <!-- Модули загружаются в правильном порядке -->
-    <script src="js/config.js"></script>
-    <script src="js/auth.js"></script>
-    <script src="js/chat.js"></script>
-    <script src="js/channels.js"></script>
-    <script src="js/emoji.js"></script>
-    <script src="js/upload.js"></script>
-    <script src="js/voice.js"></script>
-    <script src="js/app.js"></script>
+    <!-- Toast-уведомление -->
+    <div id="toast" class="toast-notification"></div>
+    <div id="notificationPopup" class="notification-popup"></div>
+
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="auth.js"></script>
+    <script src="voice.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>

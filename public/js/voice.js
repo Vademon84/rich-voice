@@ -24,17 +24,14 @@ function initPTT() {
 function handlePTTKeyDown(e) {
     if (!isInVoiceRoom || !pttEnabled || !localStream) return;
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-
     const pressedKey = e.code === 'Space' ? 'Space' : e.key;
 
     if (pressedKey === pttKey && !isPTTActive) {
         e.preventDefault();
         isPTTActive = true;
-        
         localStream.getAudioTracks().forEach(track => {
             track.enabled = true;
         });
-        
         updatePTTVisual(true);
         console.log('🎤 PTT: микрофон включён');
     }
@@ -43,17 +40,14 @@ function handlePTTKeyDown(e) {
 function handlePTTKeyUp(e) {
     if (!isInVoiceRoom || !pttEnabled || !localStream) return;
     const releasedKey = e.code === 'Space' ? 'Space' : e.key;
-
     if (releasedKey === pttKey && isPTTActive) {
         e.preventDefault();
         isPTTActive = false;
-        
         if (!isMuted) {
             localStream.getAudioTracks().forEach(track => {
                 track.enabled = false;
             });
         }
-        
         updatePTTVisual(false);
         console.log('🔇 PTT: микрофон выключен');
     }
@@ -84,7 +78,6 @@ function updatePTTButton() {
         pttToggleBtn.textContent = pttEnabled ? '🎤 PTT: ВКЛ' : '🔕 PTT: ВЫКЛ';
         pttToggleBtn.style.background = pttEnabled ? '#00d26a' : '#40444b';
     }
-
     if (pttKeyBtn) {
         const displayName = pttKey === 'Space' ? 'Пробел' : pttKey;
         pttKeyBtn.textContent = `Клавиша: ${displayName}`;
@@ -135,25 +128,22 @@ async function joinVoiceRoom() {
             },
             video: false
         });
-        
-        console.log(' Микрофон получен');
-        
+        console.log('🎤 Микрофон получен');
+
         isInVoiceRoom = true;
         document.getElementById('voiceRoomPanel').classList.add('active');
         document.getElementById('joinVoiceBtn').textContent = '🎤 В комнате';
-        
-        // Инициализация анализатора аудио
+
         initAudioAnalyzer();
-        
+
         if (pttEnabled) {
             localStream.getAudioTracks().forEach(track => {
                 track.enabled = false;
             });
         }
-        
+
         socket.emit('voice_join', { username: currentUser, roomId: CONFIG.ROOM_ID });
         console.log('🎤 Вошёл в голосовую комнату');
-        
     } catch (error) {
         console.error('❌ Ошибка доступа к микрофону:', error);
         alert('Не удалось получить доступ к микрофону.');
@@ -161,10 +151,8 @@ async function joinVoiceRoom() {
 }
 
 // ========== ИНДИКАТОР "КТО ГОВОРИТ" ==========
-
 function initAudioAnalyzer() {
     if (!localStream) return;
-    
     try {
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
         analyser = audioContext.createAnalyser();
@@ -172,7 +160,6 @@ function initAudioAnalyzer() {
         source.connect(analyser);
         analyser.fftSize = 256;
         dataArray = new Uint8Array(analyser.frequencyBinCount);
-        
         monitorSpeaking();
     } catch (error) {
         console.error('Ошибка инициализации анализатора:', error);
@@ -181,27 +168,21 @@ function initAudioAnalyzer() {
 
 function monitorSpeaking() {
     if (!analyser || !isInVoiceRoom) return;
-    
     analyser.getByteFrequencyData(dataArray);
-    
+
     let sum = 0;
     for (let i = 0; i < dataArray.length; i++) {
         sum += dataArray[i];
     }
     const average = sum / dataArray.length;
-    
     const isSpeaking = average > SPEAKING_THRESHOLD;
-    
+
     if (isSpeaking) {
         socket.emit('voice_speaking', {
             roomId: CONFIG.ROOM_ID,
             isSpeaking: true
         });
-        
-        if (speakingTimeout) {
-            clearTimeout(speakingTimeout);
-        }
-        
+        if (speakingTimeout) clearTimeout(speakingTimeout);
         speakingTimeout = setTimeout(() => {
             socket.emit('voice_speaking', {
                 roomId: CONFIG.ROOM_ID,
@@ -209,7 +190,7 @@ function monitorSpeaking() {
             });
         }, SPEAKING_DEBOUNCE);
     }
-    
+
     requestAnimationFrame(monitorSpeaking);
 }
 
@@ -226,7 +207,6 @@ function handleUserSpeaking(data) {
 
 function leaveVoiceRoom() {
     if (!isInVoiceRoom) return;
-    
     peerConnections.forEach((pc) => pc.close());
     peerConnections.clear();
 
@@ -234,7 +214,6 @@ function leaveVoiceRoom() {
         localStream.getTracks().forEach(track => track.stop());
         localStream = null;
     }
-    
     if (audioContext) {
         audioContext.close();
         audioContext = null;
@@ -248,7 +227,6 @@ function leaveVoiceRoom() {
     document.getElementById('voiceRoomPanel').classList.remove('active');
     document.getElementById('joinVoiceBtn').textContent = '🎤 Голосовая комната';
     document.getElementById('voiceParticipants').innerHTML = '';
-
     console.log('🚪 Вышел из голосовой комнаты');
 }
 
@@ -258,7 +236,6 @@ function toggleMute() {
         alert('PTT включён. Используйте клавишу.');
         return;
     }
-
     isMuted = !isMuted;
     localStream.getAudioTracks().forEach(track => {
         track.enabled = !isMuted;
@@ -276,7 +253,6 @@ function toggleMute() {
 
 async function createPeerConnection(targetSocketId, targetUsername, isInitiator) {
     const pc = new RTCPeerConnection({ iceServers: CONFIG.ICE_SERVERS });
-    
     if (localStream) {
         localStream.getTracks().forEach(track => {
             pc.addTrack(track, localStream);
@@ -295,17 +271,15 @@ async function createPeerConnection(targetSocketId, targetUsername, isInitiator)
 
     pc.ontrack = (event) => {
         console.log(`🔊 Получен аудио поток от ${targetUsername}`);
-        
         const audio = document.createElement('audio');
         audio.id = `audio_${targetSocketId}`;
         audio.srcObject = event.streams[0];
         audio.autoplay = true;
         audio.style.display = 'none';
         document.body.appendChild(audio);
-        
-        // Добавляем контроль громкости
+
         addVolumeControl(targetSocketId, targetUsername);
-        
+
         event.streams[0].onremovetrack = () => {
             audio.remove();
             const volumeControl = document.getElementById(`volume-control_${targetSocketId}`);
@@ -326,7 +300,6 @@ async function createPeerConnection(targetSocketId, targetUsername, isInitiator)
         try {
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
-            
             socket.emit('voice_signal', {
                 targetSocketId: targetSocketId,
                 signal: offer,
@@ -338,23 +311,20 @@ async function createPeerConnection(targetSocketId, targetUsername, isInitiator)
     }
 }
 
-// ========== НАСТРОЙКА ГРОМКОСТИ ==========
-
+// ========== ГРОМКОСТЬ ==========
 function addVolumeControl(socketId, username) {
     const participant = document.getElementById(`participant_${socketId}`);
     if (!participant) return;
-    
     const volumeControl = document.createElement('div');
     volumeControl.id = `volume-control_${socketId}`;
     volumeControl.className = 'volume-control';
     volumeControl.innerHTML = `
         <span class="volume-icon">🔊</span>
-        <input type="range" min="0" max="100" value="100" 
-               class="volume-slider" 
+        <input type="range" min="0" max="100" value="100"
+               class="volume-slider"
                data-socket-id="${socketId}"
                onchange="setVolume('${socketId}', this.value)">
     `;
-    
     participant.appendChild(volumeControl);
 }
 
@@ -362,7 +332,6 @@ function setVolume(socketId, value) {
     const audio = document.getElementById(`audio_${socketId}`);
     if (audio) {
         audio.volume = value / 100;
-        
         const icon = document.querySelector(`#volume-control_${socketId} .volume-icon`);
         if (icon) {
             if (value == 0) icon.textContent = '🔇';
@@ -376,13 +345,11 @@ async function handleSignal(socketId, signal) {
     let pc = peerConnections.get(socketId);
     if (!pc) {
         pc = new RTCPeerConnection({ iceServers: CONFIG.ICE_SERVERS });
-        
         if (localStream) {
             localStream.getTracks().forEach(track => {
                 pc.addTrack(track, localStream);
             });
         }
-        
         pc.onicecandidate = (event) => {
             if (event.candidate) {
                 socket.emit('voice_ice_candidate', {
@@ -392,32 +359,26 @@ async function handleSignal(socketId, signal) {
                 });
             }
         };
-        
         pc.ontrack = (event) => {
             console.log(`🔊 Получен аудио поток от ${socketId}`);
-            
             const audio = document.createElement('audio');
             audio.id = `audio_${socketId}`;
             audio.srcObject = event.streams[0];
             audio.autoplay = true;
             audio.style.display = 'none';
             document.body.appendChild(audio);
-            
             addVolumeControl(socketId, 'Пользователь');
-            
             event.streams[0].onremovetrack = () => {
                 audio.remove();
                 const volumeControl = document.getElementById(`volume-control_${socketId}`);
                 if (volumeControl) volumeControl.remove();
             };
         };
-        
         pc.onconnectionstatechange = () => {
             if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
                 closePeerConnection(socketId);
             }
         };
-        
         peerConnections.set(socketId, pc);
     }
 
@@ -425,7 +386,6 @@ async function handleSignal(socketId, signal) {
         await pc.setRemoteDescription(new RTCSessionDescription(signal));
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
-        
         socket.emit('voice_signal', {
             targetSocketId: socketId,
             signal: answer,
@@ -459,7 +419,6 @@ function closePeerConnection(socketId) {
 function updateVoiceParticipants(participants) {
     const voiceParticipants = document.getElementById('voiceParticipants');
     voiceParticipants.innerHTML = '';
-    
     participants.forEach(p => {
         const div = document.createElement('div');
         div.className = 'voice-participant';

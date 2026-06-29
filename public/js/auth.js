@@ -8,9 +8,8 @@ function switchAuthMode() {
     const authTitle = document.getElementById('authTitle');
     const authButton = document.getElementById('authButton');
     const switchLink = document.getElementById('switchLink');
-    
     errorMessage.textContent = '';
-    
+
     if (isLoginMode) {
         authTitle.textContent = 'Вход в RICH-VOICE';
         authButton.textContent = 'Войти';
@@ -26,26 +25,25 @@ async function handleAuth() {
     const usernameInput = document.getElementById('usernameInput');
     const passwordInput = document.getElementById('passwordInput');
     const errorMessage = document.getElementById('errorMessage');
-    
     const username = usernameInput.value.trim();
     const password = passwordInput.value;
-    
+
     if (!username || !password) {
         errorMessage.textContent = 'Заполните все поля';
         return;
     }
-    
+
     const endpoint = isLoginMode ? '/api/login' : '/api/register';
-    
+
     try {
         const response = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, password })
         });
-        
+
         const data = await response.json();
-        
+
         if (data.success) {
             localStorage.setItem('richvoice_user', data.username);
             currentUser = data.username;
@@ -76,17 +74,14 @@ function logout() {
 }
 
 // ========== ФУНКЦИИ ДЛЯ АВАТАРОВ ==========
-
 async function loadUserAvatar(username) {
     try {
         const response = await fetch(`/api/user/avatar/${username}`);
         const data = await response.json();
-        
         if (data.avatar) {
             localStorage.setItem('richvoice_avatar', data.avatar);
             return data.avatar;
         }
-        
         return '';
     } catch (error) {
         console.error('Ошибка загрузки аватара:', error);
@@ -104,15 +99,13 @@ async function updateUserAvatar(avatarUrl) {
                 avatarUrl: avatarUrl
             })
         });
-        
         const data = await response.json();
-        
+
         if (data.success) {
             localStorage.setItem('richvoice_avatar', avatarUrl);
             updateCurrentUserAvatar(avatarUrl);
             return true;
         }
-        
         return false;
     } catch (error) {
         console.error('Ошибка обновления аватара:', error);
@@ -123,9 +116,8 @@ async function updateUserAvatar(avatarUrl) {
 function updateCurrentUserAvatar(avatarUrl) {
     const currentUserDisplay = document.getElementById('currentUser');
     if (!currentUserDisplay) return;
-    
     currentUserDisplay.innerHTML = '';
-    
+
     if (avatarUrl) {
         const img = document.createElement('img');
         img.src = avatarUrl;
@@ -133,12 +125,12 @@ function updateCurrentUserAvatar(avatarUrl) {
         img.alt = currentUser;
         currentUserDisplay.appendChild(img);
     }
-    
+
     const span = document.createElement('span');
     span.textContent = currentUser;
     span.className = 'username-text';
     currentUserDisplay.appendChild(span);
-    
+
     const modalPreview = document.getElementById('currentAvatarPreview');
     if (modalPreview) {
         if (avatarUrl) {
@@ -149,4 +141,29 @@ function updateCurrentUserAvatar(avatarUrl) {
             modalPreview.style.display = 'block';
         }
     }
+}
+
+// ========== МОДАЛКА АВАТАРА ==========
+function openAvatarModal() {
+    document.getElementById('avatarModal').classList.add('show');
+}
+function closeAvatarModal() {
+    document.getElementById('avatarModal').classList.remove('show');
+}
+
+async function handleAvatarUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        const avatarUrl = e.target.result;
+        await updateUserAvatar(avatarUrl);
+        closeAvatarModal();
+    };
+    reader.readAsDataURL(file);
+}
+
+async function removeAvatar() {
+    await updateUserAvatar('');
+    closeAvatarModal();
 }
