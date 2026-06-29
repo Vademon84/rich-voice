@@ -3,32 +3,35 @@ let localStream = null;
 let peerConnections = new Map();
 let isInVoiceRoom = false;
 let isMuted = false;
-let isPTTActive = false; // Нажата ли клавиша PTT
-let pttKey = localStorage.getItem('richvoice_ptt_key') || 'Space'; // По умолчанию пробел
+let isPTTActive = false;
+let pttKey = localStorage.getItem('richvoice_ptt_key') || 'Space';
 let pttEnabled = localStorage.getItem('richvoice_ptt_enabled') === 'true';
+
+// Для индикатора "кто говорит"
+let audioContext = null;
+let analyser = null;
+let dataArray = null;
+let speakingTimeout = null;
+const SPEAKING_THRESHOLD = 30; // Порог громкости
+const SPEAKING_DEBOUNCE = 100; // Задержка в мс
 
 // Инициализация PTT
 function initPTT() {
     updatePTTButton();
-    
-    // Глобальные обработчики клавиш
     document.addEventListener('keydown', handlePTTKeyDown);
     document.addEventListener('keyup', handlePTTKeyUp);
 }
 
 function handlePTTKeyDown(e) {
     if (!isInVoiceRoom || !pttEnabled || !localStream) return;
-    
-    // Игнорируем, если фокус в поле ввода
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-    
+
     const pressedKey = e.code === 'Space' ? 'Space' : e.key;
-    
+
     if (pressedKey === pttKey && !isPTTActive) {
         e.preventDefault();
         isPTTActive = true;
         
-        // Включаем микрофон
         localStream.getAudioTracks().forEach(track => {
             track.enabled = true;
         });
@@ -40,14 +43,12 @@ function handlePTTKeyDown(e) {
 
 function handlePTTKeyUp(e) {
     if (!isInVoiceRoom || !pttEnabled || !localStream) return;
-    
     const releasedKey = e.code === 'Space' ? 'Space' : e.key;
-    
+
     if (releasedKey === pttKey && isPTTActive) {
         e.preventDefault();
         isPTTActive = false;
         
-        // Выключаем микрофон (если не в режиме обычного mute)
         if (!isMuted) {
             localStream.getAudioTracks().forEach(track => {
                 track.enabled = false;
@@ -80,12 +81,11 @@ function updatePTTVisual(active) {
 function updatePTTButton() {
     const pttToggleBtn = document.getElementById('pttToggleBtn');
     const pttKeyBtn = document.getElementById('pttKeyBtn');
-    
     if (pttToggleBtn) {
         pttToggleBtn.textContent = pttEnabled ? '🎤 PTT: ВКЛ' : '🔕 PTT: ВЫКЛ';
         pttToggleBtn.style.background = pttEnabled ? '#00d26a' : '#40444b';
     }
-    
+
     if (pttKeyBtn) {
         const displayName = pttKey === 'Space' ? 'Пробел' : pttKey;
         pttKeyBtn.textContent = `Клавиша: ${displayName}`;
@@ -96,9 +96,7 @@ function togglePTT() {
     pttEnabled = !pttEnabled;
     localStorage.setItem('richvoice_ptt_enabled', pttEnabled);
     updatePTTButton();
-    
     if (pttEnabled && isInVoiceRoom && localStream) {
-        // При включении PTT сразу выключаем микрофон
         localStream.getAudioTracks().forEach(track => {
             track.enabled = false;
         });
@@ -111,22 +109,15 @@ function setPTTKey() {
     const originalText = pttKeyBtn.textContent;
     pttKeyBtn.textContent = '⏳ Нажмите клавишу...';
     pttKeyBtn.style.background = '#5865f2';
-    
     const handler = (e) => {
         e.preventDefault();
-        
-        // Сохраняем клавишу
         pttKey = e.code === 'Space' ? 'Space' : e.key;
         localStorage.setItem('richvoice_ptt_key', pttKey);
-        
-        // Возвращаем кнопку
         pttKeyBtn.style.background = '#40444b';
         updatePTTButton();
-        
         document.removeEventListener('keydown', handler);
         console.log('🎤 PTT клавиша установлена:', pttKey);
     };
-    
     document.addEventListener('keydown', handler);
 }
 
@@ -141,13 +132,13 @@ async function toggleVoiceRoom() {
 
 async function joinVoiceRoom() {
     try {
-        localStream = await navigator.mediaDevices.getUserMedia({ 
+        localStream = await navigator.mediaDevices.getUserMedia({
             audio: {
                 echoCancellation: true,
                 noiseSuppression: true,
                 autoGainControl: true
-            }, 
-            video: false 
+            },
+            video: false
         });
         
         console.log('🎤 Микрофон получен');
@@ -156,7 +147,9 @@ async function joinVoiceRoom() {
         document.getElementById('voiceRoomPanel').classList.add('active');
         document.getElementById('joinVoiceBtn').textContent = '🎤 В комнате';
         
-        // Если PTT включён - сразу выключаем микрофон
+        // Инициализация анализатора аудио для индикатора "кто говорит"
+        initAudioAnalyzer();
+        
         if (pttEnabled) {
             localStream.getAudioTracks().forEach(track => {
                 track.enabled = false;
@@ -173,42 +166,105 @@ async function joinVoiceRoom() {
     }
 }
 
+// ========== ИНДИКАТОР "КТО ГОВОРИТ" ==========
+
+function initAudioAnalyzer() {
+    if (!localStream) return;
+    
+    try {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = audioContext.createAnalyser();
+        const source = audioContext.createMediaStreamSource(localStream);
+        source.connect(analyser);
+        analyser.fftSize = 256;
+        dataArray = new Uint8Array(analyser.frequencyBinCount);
+        
+        // Запускаем мониторинг громкости
+        monitorSpeaking();
+    } catch (error) {
+        console.error('Ошибка инициализации анализатора:', error);
+    }
+}
+
+function monitorSpeaking() {
+    if (!analyser || !isInVoiceRoom) return;
+    
+    analyser.getByteFrequencyData(dataArray);
+    
+    // Вычисляем среднюю громкость
+    let sum = 0;
+    for (let i = 0; i < dataArray.length; i++) {
+        sum += dataArray[i];
+    }
+    const average = sum / dataArray.length;
+    
+    // Проверяем, говорит ли пользователь
+    const isSpeaking = average > SPEAKING_THRESHOLD;
+    
+    if (isSpeaking) {
+        // Отправляем на сервер, что пользователь говорит
+        socket.emit('voice_speaking', {
+            roomId: CONFIG.ROOM_ID,
+            isSpeaking: true
+        });
+        
+        // Сбрасываем таймаут
+        if (speakingTimeout) {
+            clearTimeout(speakingTimeout);
+        }
+        
+        // Устанавливаем таймаут для окончания речи
+        speakingTimeout = setTimeout(() => {
+            socket.emit('voice_speaking', {
+                roomId: CONFIG.ROOM_ID,
+                isSpeaking: false
+            });
+        }, SPEAKING_DEBOUNCE);
+    }
+    
+    requestAnimationFrame(monitorSpeaking);
+}
+
 function leaveVoiceRoom() {
     if (!isInVoiceRoom) return;
     
     peerConnections.forEach((pc) => pc.close());
     peerConnections.clear();
-    
+
     if (localStream) {
         localStream.getTracks().forEach(track => track.stop());
         localStream = null;
     }
     
+    if (audioContext) {
+        audioContext.close();
+        audioContext = null;
+        analyser = null;
+    }
+
     socket.emit('voice_leave', { roomId: CONFIG.ROOM_ID });
-    
+
     isInVoiceRoom = false;
     isPTTActive = false;
     document.getElementById('voiceRoomPanel').classList.remove('active');
     document.getElementById('joinVoiceBtn').textContent = '🎤 Голосовая комната';
     document.getElementById('voiceParticipants').innerHTML = '';
-    
+
     console.log('🚪 Вышел из голосовой комнаты');
 }
 
 function toggleMute() {
     if (!localStream) return;
-    
-    // Если PTT включён - не даём менять mute вручную
     if (pttEnabled) {
         alert('PTT включён. Используйте клавишу для управления микрофоном.');
         return;
     }
-    
+
     isMuted = !isMuted;
     localStream.getAudioTracks().forEach(track => {
         track.enabled = !isMuted;
     });
-    
+
     const muteBtn = document.getElementById('muteBtn');
     if (isMuted) {
         muteBtn.textContent = '🔇 Выкл';
@@ -227,7 +283,7 @@ async function createPeerConnection(targetSocketId, targetUsername, isInitiator)
             pc.addTrack(track, localStream);
         });
     }
-    
+
     pc.onicecandidate = (event) => {
         if (event.candidate) {
             socket.emit('voice_ice_candidate', {
@@ -237,7 +293,7 @@ async function createPeerConnection(targetSocketId, targetUsername, isInitiator)
             });
         }
     };
-    
+
     pc.ontrack = (event) => {
         console.log(`🔊 Получен аудио поток от ${targetUsername}`);
         
@@ -248,18 +304,25 @@ async function createPeerConnection(targetSocketId, targetUsername, isInitiator)
         audio.style.display = 'none';
         document.body.appendChild(audio);
         
-        event.streams[0].onremovetrack = () => audio.remove();
+        // Добавляем контроль громкости
+        addVolumeControl(targetSocketId, targetUsername);
+        
+        event.streams[0].onremovetrack = () => {
+            audio.remove();
+            const volumeControl = document.getElementById(`volume-control_${targetSocketId}`);
+            if (volumeControl) volumeControl.remove();
+        };
     };
-    
+
     pc.onconnectionstatechange = () => {
         console.log(`Состояние соединения с ${targetUsername}:`, pc.connectionState);
         if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
             closePeerConnection(targetSocketId);
         }
     };
-    
+
     peerConnections.set(targetSocketId, pc);
-    
+
     if (isInitiator) {
         try {
             const offer = await pc.createOffer();
@@ -278,9 +341,45 @@ async function createPeerConnection(targetSocketId, targetUsername, isInitiator)
     }
 }
 
+// ========== НАСТРОЙКА ГРОМКОСТИ ==========
+
+function addVolumeControl(socketId, username) {
+    const participant = document.getElementById(`participant_${socketId}`);
+    if (!participant) return;
+    
+    const volumeControl = document.createElement('div');
+    volumeControl.id = `volume-control_${socketId}`;
+    volumeControl.className = 'volume-control';
+    volumeControl.innerHTML = `
+        <span class="volume-icon">🔊</span>
+        <input type="range" min="0" max="100" value="100" 
+               class="volume-slider" 
+               data-socket-id="${socketId}"
+               onchange="setVolume('${socketId}', this.value)">
+    `;
+    
+    participant.appendChild(volumeControl);
+}
+
+function setVolume(socketId, value) {
+    const audio = document.getElementById(`audio_${socketId}`);
+    if (audio) {
+        audio.volume = value / 100;
+        
+        // Обновляем иконку
+        const icon = document.querySelector(`#volume-control_${socketId} .volume-icon`);
+        if (icon) {
+            if (value == 0) icon.textContent = '🔇';
+            else if (value < 50) icon.textContent = '🔉';
+            else icon.textContent = '🔊';
+        }
+        
+        console.log(`🔊 Громкость для ${socketId}: ${value}%`);
+    }
+}
+
 async function handleSignal(socketId, signal) {
     let pc = peerConnections.get(socketId);
-    
     if (!pc) {
         pc = new RTCPeerConnection({ iceServers: CONFIG.ICE_SERVERS });
         
@@ -309,6 +408,14 @@ async function handleSignal(socketId, signal) {
             audio.autoplay = true;
             audio.style.display = 'none';
             document.body.appendChild(audio);
+            
+            addVolumeControl(socketId, 'Пользователь');
+            
+            event.streams[0].onremovetrack = () => {
+                audio.remove();
+                const volumeControl = document.getElementById(`volume-control_${socketId}`);
+                if (volumeControl) volumeControl.remove();
+            };
         };
         
         pc.onconnectionstatechange = () => {
@@ -319,7 +426,7 @@ async function handleSignal(socketId, signal) {
         
         peerConnections.set(socketId, pc);
     }
-    
+
     if (signal.type === 'offer') {
         await pc.setRemoteDescription(new RTCSessionDescription(signal));
         const answer = await pc.createAnswer();
@@ -351,9 +458,10 @@ function closePeerConnection(socketId) {
     if (pc) {
         pc.close();
         peerConnections.delete(socketId);
-        
         const audio = document.getElementById(`audio_${socketId}`);
         if (audio) audio.remove();
+        const volumeControl = document.getElementById(`volume-control_${socketId}`);
+        if (volumeControl) volumeControl.remove();
     }
 }
 
@@ -371,14 +479,27 @@ function updateVoiceParticipants(participants) {
         `;
         voiceParticipants.appendChild(div);
     });
-    
+
     if (isInVoiceRoom) {
         const myDiv = document.createElement('div');
         myDiv.className = 'voice-participant' + (isMuted || pttEnabled ? ' muted' : '');
+        myDiv.id = 'participant_me';
         myDiv.innerHTML = `
             <span class="mic-icon">${(isMuted || pttEnabled) ? '🔇' : '🎤'}</span>
             <span>${currentUser} (вы)</span>
         `;
         voiceParticipants.appendChild(myDiv);
+    }
+}
+
+// Обработчик обновления статуса "кто говорит"
+function handleUserSpeaking(data) {
+    const participant = document.getElementById(`participant_${data.socketId}`);
+    if (participant) {
+        if (data.isSpeaking) {
+            participant.classList.add('speaking');
+        } else {
+            participant.classList.remove('speaking');
+        }
     }
 }

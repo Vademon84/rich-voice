@@ -125,6 +125,52 @@ app.get('/api/online', (req, res) => {
   res.json(Array.from(onlineUsers.values()));
 });
 
+// Получение аватара пользователя
+app.get('/api/user/avatar/:username', async (req, res) => {
+  try {
+    const user = await User.findOne({ username: req.params.username });
+    if (!user) {
+      return res.status(404).json({ avatar: '' });
+    }
+    res.json({ avatar: user.avatar || '' });
+  } catch (error) {
+    console.error('❌ Ошибка получения аватара:', error);
+    res.json({ avatar: '' });
+  }
+});
+
+// Загрузка аватара
+app.post('/api/user/avatar', async (req, res) => {
+  try {
+    const { username, avatarUrl } = req.body;
+    
+    const user = await User.findOne({ username });
+    if (!user) {
+      return res.status(404).json({ error: 'Пользователь не найден' });
+    }
+    
+    user.avatar = avatarUrl;
+    await user.save();
+    
+    console.log(`✅ Аватар обновлён для ${username}`);
+    res.json({ success: true, avatar: avatarUrl });
+  } catch (error) {
+    console.error('❌ Ошибка обновления аватара:', error);
+    res.status(500).json({ error: 'Ошибка обновления аватара' });
+  }
+});
+
+// Получение списка пользователей с аватарами
+app.get('/api/users', async (req, res) => {
+  try {
+    const users = await User.find({}, 'username avatar');
+    res.json(users);
+  } catch (error) {
+    console.error('❌ Ошибка получения пользователей:', error);
+    res.status(500).json({ error: 'Ошибка получения пользователей' });
+  }
+});
+
 // Подключаемся к MongoDB
 if (process.env.MONGODB_URI) {
   mongoose.connect(process.env.MONGODB_URI)
@@ -133,6 +179,17 @@ if (process.env.MONGODB_URI) {
 } else {
   console.log('⚠️ MONGODB_URI не найден, работаем без базы данных');
 }
+
+  // Индикатор "кто говорит"
+  socket.on('voice_speaking', (data) => {
+    const { roomId, isSpeaking } = data;
+    
+    // Рассылаем всем в комнате, кто сейчас говорит
+    socket.broadcast.to(roomId).emit('voice_user_speaking', {
+      socketId: socket.id,
+      isSpeaking: isSpeaking
+    });
+  });
 
 // Socket.IO
 io.on('connection', (socket) => {
@@ -520,6 +577,16 @@ io.on('connection', (socket) => {
       socketId: socket.id,
       candidate: candidate,
       roomId: roomId
+    });
+  });
+
+  // Индикатор "кто говорит"
+  socket.on('voice_speaking', (data) => {
+    const { roomId, isSpeaking } = data;
+    
+    socket.broadcast.to(roomId).emit('voice_user_speaking', {
+      socketId: socket.id,
+      isSpeaking: isSpeaking
     });
   });
 

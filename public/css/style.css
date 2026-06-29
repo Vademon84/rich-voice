@@ -1012,3 +1012,56 @@
     color: #00d26a;
     font-weight: bold;
 }
+
+/* Индикатор "кто говорит" */
+.voice-participant.speaking {
+    border: 2px solid #00d26a;
+    box-shadow: 0 0 10px rgba(0, 210, 106, 0.5);
+    animation: speakingPulse 0.5s infinite alternate;
+}
+
+@keyframes speakingPulse {
+    from { box-shadow: 0 0 5px rgba(0, 210, 106, 0.3); }
+    to { box-shadow: 0 0 15px rgba(0, 210, 106, 0.8); }
+}
+
+/* Контроль громкости */
+.volume-control {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-left: auto;
+}
+
+.volume-icon {
+    font-size: 14px;
+}
+
+.volume-slider {
+    width: 80px;
+    height: 4px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: #40444b;
+    border-radius: 2px;
+    outline: none;
+}
+
+.volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 12px;
+    height: 12px;
+    background: #00d26a;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.volume-slider::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    background: #00d26a;
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+}
