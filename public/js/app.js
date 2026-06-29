@@ -1,0 +1,77 @@
+// Главный файл приложения
+let socket = null;
+
+function showChat() {
+    document.getElementById('authContainer').style.display = 'none';
+    document.getElementById('chatContainer').style.display = 'flex';
+    document.getElementById('currentUser').textContent = currentUser;
+    
+    socket = io({
+        transports: ['websocket', 'polling'],
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+        maxHttpBufferSize: 1e8
+    });
+    
+    socket.emit('user_join', currentUser);
+    loadMessages();
+    
+    // Чат
+    socket.on('message', (data) => displayMessage(data));
+    socket.on('system_message', (data) => displaySystemMessage(data));
+    socket.on('online_users', (users) => updateOnlineList(users));
+    socket.on('audio_control', (data) => handleRemoteAudioControl(data));
+    
+    // Голосовая комната
+    socket.on('voice_participants', async (participants) => {
+        console.log('📋 Участники комнаты:', participants);
+        updateVoiceParticipants(participants);
+        
+        for (const p of participants) {
+            if (p.socketId !== socket.id) {
+                console.log('🔗 Создаю соединение с:', p.username);
+                await createPeerConnection(p.socketId, p.username, true);
+            }
+        }
+    });
+    
+    socket.on('voice_user_joined', async (data) => {
+        console.log('🎤 Новый участник в комнате:', data.username);
+        await createPeerConnection(data.socketId, data.username, false);
+    });
+    
+    socket.on('voice_user_left', (data) => {
+        console.log('🔇 Участник вышел:', data.username);
+        closePeerConnection(data.socketId);
+    });
+    
+    socket.on('voice_signal', async (data) => {
+        console.log('📡 Получен сигнал от:', data.socketId);
+        await handleSignal(data.socketId, data.signal);
+    });
+    
+    socket.on('voice_ice_candidate', (data) => {
+        handleIceCandidate(data.socketId, data.candidate);
+    });
+}
+
+// Инициализация при загрузке страницы
+window.addEventListener('DOMContentLoaded', () => {
+    const savedUser = localStorage.getItem('richvoice_user');
+    if (savedUser) {
+        currentUser = savedUser;
+        showChat();
+    }
+    initEmojiPanel();
+    initPTT();
+    
+    // Обработчики Enter
+    document.getElementById('messageInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') sendMessage();
+    });
+    
+    document.getElementById('passwordInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') handleAuth();
+    });
+});
