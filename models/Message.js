@@ -26,11 +26,17 @@ const messageSchema = new mongoose.Schema({
   },
   // Для приватных сообщений
   recipient: {
-    type: String  // username получателя
+    type: String
   },
   isPrivate: {
     type: Boolean,
     default: false
+  },
+  // ✅ НОВОЕ: Реакции на сообщения
+  reactions: {
+    type: Object,
+    default: {}
+    // Формат: { "❤️": ["user1", "user2"], "😂": ["user3"], ... }
   },
   createdAt: {
     type: Date,
