@@ -5,12 +5,6 @@ function showChat() {
     document.getElementById('authContainer').style.display = 'none';
     document.getElementById('chatContainer').style.display = 'flex';
     
-    socket.on('voice_user_speaking', (data) => {
-        if (typeof handleUserSpeaking === 'function') {
-            handleUserSpeaking(data);
-        }
-    });
-
     // Загружаем и отображаем аватар
     if (typeof loadUserAvatar === 'function' && typeof updateCurrentUserAvatar === 'function') {
         loadUserAvatar(currentUser).then(avatarUrl => {
@@ -141,7 +135,6 @@ function showChat() {
     });
 }
 
-// Инициализация при загрузке страницы
 window.addEventListener('DOMContentLoaded', () => {
     const savedUser = localStorage.getItem('richvoice_user');
     if (savedUser) {
