@@ -43,6 +43,57 @@ function showChat() {
         }
     });
     
+    // ========== ПРИВАТНЫЕ СООБЩЕНИЯ (ЛС) ==========
+    
+    // Получение приватного сообщения
+    socket.on('private_message', (data) => {
+        // Показываем ЛС только если открыт чат с этим пользователем
+        if (currentPrivateChat && 
+            ((data.username === currentUser && data.recipient === currentPrivateChat) ||
+             (data.username === currentPrivateChat && data.recipient === currentUser))) {
+            displayPrivateMessage(data);
+        }
+    });
+    
+    // Загрузка истории ЛС
+    socket.on('private_messages_loaded', (messages) => {
+        const messagesDiv = document.getElementById('privateMessages');
+        if (messagesDiv) {
+            messagesDiv.innerHTML = '';
+            messages.forEach(msg => {
+                displayPrivateMessage({
+                    _id: msg._id,
+                    username: msg.username,
+                    recipient: msg.recipient,
+                    text: msg.text,
+                    createdAt: msg.createdAt
+                });
+            });
+        }
+    });
+    
+    // Уведомление о новом ЛС
+    socket.on('private_notification', (data) => {
+        if (typeof playNotificationSound === 'function') {
+            playNotificationSound();
+        }
+        if (typeof showNotification === 'function') {
+            showNotification(`Новое ЛС от ${data.from}`);
+        }
+    });
+    
+    // Уведомление об упоминании
+    socket.on('mention_notification', (data) => {
+        if (data.from !== currentUser) {
+            if (typeof playNotificationSound === 'function') {
+                playNotificationSound();
+            }
+            if (typeof showNotification === 'function') {
+                showNotification(`${data.from} упомянул вас в ${data.channel}`);
+            }
+        }
+    });
+    
     // Голосовая комната
     socket.on('voice_participants', async (participants) => {
         console.log('📋 Участники комнаты:', participants);

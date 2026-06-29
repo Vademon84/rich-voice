@@ -8,7 +8,7 @@ const messageSchema = new mongoose.Schema({
   channel: {
     type: String,
     default: 'болталка',
-    enum: ['болталка', 'музыка', 'игры', 'питница']
+    enum: ['болталка', 'музыка', 'игры', 'питница', 'private']
   },
   type: {
     type: String,
@@ -23,6 +23,14 @@ const messageSchema = new mongoose.Schema({
   },
   fileName: {
     type: String
+  },
+  // Для приватных сообщений
+  recipient: {
+    type: String  // username получателя
+  },
+  isPrivate: {
+    type: Boolean,
+    default: false
   },
   createdAt: {
     type: Date,

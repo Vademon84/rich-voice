@@ -54,6 +54,64 @@ async function loadMessages(channel) {
     }
 }
 
+// ✅ НОВОЕ: Подсветка @упоминаний
+function highlightMentions(text) {
+    return text.replace(/@(\w+)/g, (match, username) => {
+        return `<span class="mention" onclick="openPrivateChat('${username}')">${match}</span>`;
+    });
+}
+
+// ✅ НОВОЕ: Проверка, упомянули ли нас
+function checkMention(text) {
+    if (!text) return;
+    const mentionPattern = new RegExp(`@${currentUser}\\b`, 'i');
+    if (mentionPattern.test(text)) {
+        playNotificationSound();
+        showNotification(`Вас упомянули в сообщении`);
+    }
+}
+
+// ✅ НОВОЕ: Звуковое уведомление
+function playNotificationSound() {
+    try {
+        // Создаём короткий звуковой сигнал
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.frequency.value = 800;
+        oscillator.type = 'sine';
+        
+        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.5);
+    } catch (error) {
+        console.log('Не удалось воспроизвести звук:', error);
+    }
+}
+
+// ✅ НОВОЕ: Всплывающее уведомление
+function showNotification(text) {
+    const notification = document.createElement('div');
+    notification.className = 'notification-popup';
+    notification.textContent = text;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.classList.add('show');
+    }, 100);
+    
+    setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => notification.remove(), 300);
+    }, 3000);
+}
+
 function displayMessage(data) {
     const messagesDiv = document.getElementById('messages');
     const messageDiv = document.createElement('div');
@@ -65,7 +123,14 @@ function displayMessage(data) {
     let contentHtml = '';
     
     if (data.type === 'text') {
-        contentHtml = `<div class="message-content">${escapeHtml(data.text)}</div>`;
+        // ✅ ИСПРАВЛЕНО: добавлена подсветка упоминаний
+        const highlightedText = highlightMentions(escapeHtml(data.text));
+        contentHtml = `<div class="message-content">${highlightedText}</div>`;
+        
+        // ✅ НОВОЕ: Проверяем, упомянули ли нас
+        if (data.text && data.username !== currentUser) {
+            checkMention(data.text);
+        }
     } else if (data.type === 'image') {
         contentHtml = `
             <div class="message-content">🖼️ ${escapeHtml(data.fileName)}</div>
@@ -119,7 +184,6 @@ function displaySystemMessage(data) {
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
-// ✅ ИСПРАВЛЕНО: теперь отправляем текущий канал
 function sendMessage() {
     const messageInput = document.getElementById('messageInput');
     const text = messageInput.value.trim();
@@ -127,7 +191,7 @@ function sendMessage() {
         socket.emit('message', { 
             username: currentUser, 
             text: text,
-            channel: currentChannel || 'болталка'  // ← ДОБАВЛЕНО!
+            channel: currentChannel || 'болталка'
         });
         messageInput.value = '';
     }
@@ -172,6 +236,7 @@ function handleRemoteAudioControl(data) {
     });
 }
 
+// ✅ ИСПРАВЛЕНО: добавлена кнопка "Написать ЛС"
 function updateOnlineList(users) {
     const onlineList = document.getElementById('onlineList');
     const onlineCount = document.getElementById('onlineCount');
@@ -180,9 +245,18 @@ function updateOnlineList(users) {
     users.forEach(user => {
         const userDiv = document.createElement('div');
         userDiv.className = 'online-user';
+        
+        // ✅ НОВОЕ: кнопка "Написать" для ЛС (не для себя)
+        const writeButton = user !== currentUser ? `
+            <button class="write-btn" onclick="openPrivateChat('${user}')" title="Написать ЛС">
+                ✉️
+            </button>
+        ` : '';
+        
         userDiv.innerHTML = `
             <div class="status-dot"></div>
-            <span>${user}</span>
+            <span class="username-text">${user}</span>
+            ${writeButton}
         `;
         onlineList.appendChild(userDiv);
     });
@@ -232,4 +306,69 @@ function showToast(message) {
 function handleError(message) {
     console.error('❌', message);
     showToast(message);
+}
+
+// ========== ПРИВАТНЫЕ СООБЩЕНИЯ (ЛС) ==========
+
+let currentPrivateChat = null; // С кем сейчас ведём ЛС
+
+// ✅ НОВОЕ: Открытие окна ЛС
+function openPrivateChat(username) {
+    currentPrivateChat = username;
+    
+    // Показываем окно ЛС
+    const privateChatWindow = document.getElementById('privateChatWindow');
+    const privateChatHeader = document.getElementById('privateChatHeader');
+    privateChatHeader.textContent = `🔒 ЛС с ${username}`;
+    privateChatWindow.style.display = 'flex';
+    
+    // Загружаем историю
+    socket.emit('load_private_messages', {
+        user1: currentUser,
+        user2: username
+    });
+}
+
+// ✅ НОВОЕ: Закрытие окна ЛС
+function closePrivateChat() {
+    currentPrivateChat = null;
+    document.getElementById('privateChatWindow').style.display = 'none';
+}
+
+// ✅ НОВОЕ: Отправка приватного сообщения
+function sendPrivateMessage() {
+    const input = document.getElementById('privateMessageInput');
+    const text = input.value.trim();
+    
+    if (text && currentPrivateChat && socket) {
+        socket.emit('private_message', {
+            username: currentUser,
+            recipient: currentPrivateChat,
+            text: text
+        });
+        input.value = '';
+    }
+}
+
+// ✅ НОВОЕ: Отображение приватного сообщения
+function displayPrivateMessage(data) {
+    const messagesDiv = document.getElementById('privateMessages');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'private-message';
+    
+    const isOwn = data.username === currentUser;
+    messageDiv.classList.add(isOwn ? 'own' : 'other');
+    
+    const time = data.createdAt ? formatDateTime(data.createdAt) : 'Только что';
+    
+    messageDiv.innerHTML = `
+        <div class="private-message-header">
+            <span class="private-message-username">${escapeHtml(data.username)}</span>
+            <span class="private-message-time">${time}</span>
+        </div>
+        <div class="private-message-content">${highlightMentions(escapeHtml(data.text))}</div>
+    `;
+    
+    messagesDiv.appendChild(messageDiv);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }

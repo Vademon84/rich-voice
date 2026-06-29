@@ -81,6 +81,19 @@
         </div>
     </div>
 
+    <!-- ✅ НОВОЕ: Окно приватного чата -->
+    <div class="private-chat-window" id="privateChatWindow">
+        <div class="private-chat-header">
+            <span id="privateChatHeader">🔒 ЛС</span>
+            <button class="close-private-chat" onclick="closePrivateChat()">✖️</button>
+        </div>
+        <div class="private-messages" id="privateMessages"></div>
+        <div class="private-input-area">
+            <input type="text" id="privateMessageInput" placeholder="Введите сообщение..." onkeypress="if(event.key==='Enter') sendPrivateMessage()">
+            <button onclick="sendPrivateMessage()">Отправить</button>
+        </div>
+    </div>
+
     <script src="/socket.io/socket.io.js"></script>
     <!-- Модули загружаются в правильном порядке -->
     <script src="js/config.js"></script>

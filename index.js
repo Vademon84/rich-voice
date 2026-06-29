@@ -46,7 +46,7 @@ const upload = multer({
 const onlineUsers = new Map();
 
 // Хранилище голосовых комнат
-const voiceRooms = new Map(); // roomId -> Map of socketId -> {username, socketId}
+const voiceRooms = new Map();
 
 // Главная страница
 app.get('/', (req, res) => {
@@ -166,7 +166,6 @@ io.on('connection', (socket) => {
       });
       await message.save();
       
-      // ✅ ДОБАВЛЕНО: передаём _id для возможности удаления
       io.emit('message', {
         _id: message._id,
         username: data.username,
@@ -175,8 +174,90 @@ io.on('connection', (socket) => {
         text: data.text,
         createdAt: message.createdAt
       });
+      
+      // ✅ НОВОЕ: проверяем @упоминания и уведомляем упомянутых
+      const mentionRegex = /@(\w+)/g;
+      let match;
+      while ((match = mentionRegex.exec(data.text)) !== null) {
+        const mentionedUsername = match[1];
+        
+        // Ищем socket упомянутого пользователя
+        for (const [sid, uname] of onlineUsers.entries()) {
+          if (uname === mentionedUsername && sid !== socket.id) {
+            io.to(sid).emit('mention_notification', {
+              from: data.username,
+              text: data.text,
+              channel: data.channel || 'болталка'
+            });
+          }
+        }
+      }
     } catch (error) {
       console.error('❌ Ошибка сохранения сообщения:', error);
+    }
+  });
+
+  // ========== ПРИВАТНЫЕ СООБЩЕНИЯ (ЛС) ==========
+  
+  // Отправка приватного сообщения
+  socket.on('private_message', async (data) => {
+    console.log('🔒 ЛС от', data.username, 'к', data.recipient);
+    
+    try {
+      const message = new Message({
+        username: data.username,
+        recipient: data.recipient,
+        channel: 'private',
+        type: 'text',
+        text: data.text,
+        isPrivate: true
+      });
+      await message.save();
+      
+      // Отправляем обоим пользователям (отправителю и получателю)
+      const messageData = {
+        _id: message._id,
+        username: data.username,
+        recipient: data.recipient,
+        text: data.text,
+        createdAt: message.createdAt
+      };
+      
+      // Отправитель получает сообщение (для отображения в своём чате)
+      socket.emit('private_message', messageData);
+      
+      // Получатель получает сообщение
+      for (const [sid, uname] of onlineUsers.entries()) {
+        if (uname === data.recipient) {
+          io.to(sid).emit('private_message', messageData);
+          // Также отправляем уведомление
+          io.to(sid).emit('private_notification', {
+            from: data.username,
+            text: data.text
+          });
+        }
+      }
+    } catch (error) {
+      console.error('❌ Ошибка отправки ЛС:', error);
+      socket.emit('error_message', 'Ошибка при отправке ЛС');
+    }
+  });
+
+  // Загрузка истории ЛС между двумя пользователями
+  socket.on('load_private_messages', async (data) => {
+    try {
+      const messages = await Message.find({
+        channel: 'private',
+        $or: [
+          { username: data.user1, recipient: data.user2 },
+          { username: data.user2, recipient: data.user1 }
+        ]
+      }).sort({ createdAt: -1 }).limit(50);
+      
+      socket.emit('private_messages_loaded', messages.reverse());
+    } catch (error) {
+      console.error('❌ Ошибка загрузки ЛС:', error);
+      socket.emit('error_message', 'Ошибка при загрузке ЛС');
     }
   });
 
@@ -236,14 +317,13 @@ io.on('connection', (socket) => {
       
       const message = new Message({
         username: data.username,
-        channel: data.channel || 'болталка',  // ✅ ДОБАВЛЕНО
+        channel: data.channel || 'болталка',
         type: 'image',
         fileUrl: fileUrl,
         fileName: data.fileName
       });
       await message.save();
       
-      // ✅ ДОБАВЛЕНО: передаём _id и channel
       io.emit('message', {
         _id: message._id,
         username: data.username,
@@ -284,14 +364,13 @@ io.on('connection', (socket) => {
       
       const message = new Message({
         username: data.username,
-        channel: data.channel || 'болталка',  // ✅ ДОБАВЛЕНО
+        channel: data.channel || 'болталка',
         type: 'audio',
         fileUrl: fileUrl,
         fileName: data.fileName
       });
       await message.save();
       
-      // ✅ ДОБАВЛЕНО: передаём _id и channel
       io.emit('message', {
         _id: message._id,
         username: data.username,
@@ -314,7 +393,6 @@ io.on('connection', (socket) => {
 
   // ========== ГОЛОСОВАЯ КОМНАТА ==========
   
-  // Пользователь вошёл в голосовую комнату
   socket.on('voice_join', (data) => {
     const { username, roomId } = data;
     console.log(`🎤 ${username} вошёл в голосовую комнату ${roomId}`);
@@ -326,10 +404,8 @@ io.on('connection', (socket) => {
     const room = voiceRooms.get(roomId);
     room.set(socket.id, { username, socketId: socket.id });
     
-    // Присоединяем к комнате Socket.IO
     socket.join(roomId);
     
-    // Отправляем новому пользователю список всех участников
     const participants = Array.from(room.values()).map(p => ({
       socketId: p.socketId,
       username: p.username
@@ -337,14 +413,12 @@ io.on('connection', (socket) => {
     
     socket.emit('voice_participants', participants);
     
-    // Отправляем всем остальным, что новый пользователь вошёл
     socket.broadcast.to(roomId).emit('voice_user_joined', {
       socketId: socket.id,
       username: username
     });
   });
 
-  // Пользователь вышел из голосовой комнаты
   socket.on('voice_leave', (data) => {
     const { roomId } = data;
     const room = voiceRooms.get(roomId);
@@ -355,13 +429,11 @@ io.on('connection', (socket) => {
         console.log(`🔇 ${user.username} вышел из голосовой комнаты ${roomId}`);
         room.delete(socket.id);
         
-        // Уведомляем остальных
         socket.broadcast.to(roomId).emit('voice_user_left', {
           socketId: socket.id,
           username: user.username
         });
         
-        // Обновляем список участников
         const participants = Array.from(room.values()).map(p => ({
           socketId: p.socketId,
           username: p.username
@@ -372,11 +444,8 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Обмен WebRTC сигналами (SDP offers/answers)
   socket.on('voice_signal', (data) => {
     const { targetSocketId, signal, roomId } = data;
-    
-    // Пересылаем сигнал конкретному пользователю
     io.to(targetSocketId).emit('voice_signal', {
       socketId: socket.id,
       signal: signal,
@@ -384,10 +453,8 @@ io.on('connection', (socket) => {
     });
   });
 
-  // ICE candidate
   socket.on('voice_ice_candidate', (data) => {
     const { targetSocketId, candidate, roomId } = data;
-    
     io.to(targetSocketId).emit('voice_ice_candidate', {
       socketId: socket.id,
       candidate: candidate,
@@ -407,7 +474,6 @@ io.on('connection', (socket) => {
       });
     }
     
-    // Удаляем из всех голосовых комнат
     voiceRooms.forEach((room, roomId) => {
       if (room.has(socket.id)) {
         const user = room.get(socket.id);

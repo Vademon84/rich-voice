@@ -557,3 +557,189 @@
     display: flex;
     flex-direction: column;
 }
+
+/* ========== КНОПКА ЛС В СПИСКЕ ОНЛАЙН ========== */
+.write-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    margin-left: auto;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.write-btn:hover {
+    opacity: 1;
+}
+
+.online-user {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.username-text {
+    flex: 1;
+}
+
+/* ========== ОКНО ПРИВАТНОГО ЧАТА ========== */
+.private-chat-window {
+    display: none;
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 350px;
+    height: 500px;
+    background: #2f3136;
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    flex-direction: column;
+    z-index: 1000;
+}
+
+.private-chat-header {
+    background: #202225;
+    padding: 15px;
+    border-radius: 10px 10px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: bold;
+    color: white;
+}
+
+.close-private-chat {
+    background: transparent;
+    border: none;
+    color: white;
+    cursor: pointer;
+    font-size: 18px;
+    transition: color 0.2s;
+}
+
+.close-private-chat:hover {
+    color: #ed4245;
+}
+
+.private-messages {
+    flex: 1;
+    padding: 15px;
+    overflow-y: auto;
+    background: #36393f;
+}
+
+.private-message {
+    margin-bottom: 10px;
+    padding: 10px;
+    border-radius: 8px;
+    max-width: 80%;
+    word-wrap: break-word;
+}
+
+.private-message.own {
+    background: #00d26a;
+    margin-left: auto;
+    color: white;
+}
+
+.private-message.other {
+    background: #40444b;
+    color: white;
+}
+
+.private-message-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    margin-bottom: 5px;
+    opacity: 0.8;
+}
+
+.private-message-username {
+    font-weight: bold;
+}
+
+.private-message-time {
+    font-size: 10px;
+}
+
+.private-message-content {
+    line-height: 1.4;
+}
+
+.private-input-area {
+    padding: 10px;
+    background: #2f3136;
+    border-radius: 0 0 10px 10px;
+    display: flex;
+    gap: 10px;
+    border-top: 1px solid #202225;
+}
+
+.private-input-area input {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    border-radius: 5px;
+    background: #40444b;
+    color: white;
+    font-size: 14px;
+}
+
+.private-input-area input:focus {
+    outline: none;
+    background: #484b52;
+}
+
+.private-input-area button {
+    padding: 10px 15px;
+    background: #00d26a;
+    border: none;
+    border-radius: 5px;
+    color: white;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background 0.2s;
+}
+
+.private-input-area button:hover {
+    background: #00b85c;
+}
+
+/* ========== @УПОМИНАНИЯ ========== */
+.mention {
+    color: #5865f2;
+    background: rgba(88, 101, 242, 0.1);
+    padding: 2px 4px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background 0.2s;
+}
+
+.mention:hover {
+    background: rgba(88, 101, 242, 0.2);
+    text-decoration: underline;
+}
+
+/* ========== ВСПЛЫВАЮЩИЕ УВЕДОМЛЕНИЯ ========== */
+.notification-popup {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: #5865f2;
+    color: white;
+    padding: 15px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    transform: translateX(400px);
+    transition: transform 0.3s ease;
+    z-index: 2000;
+    font-weight: 500;
+    max-width: 300px;
+}
+
+.notification-popup.show {
+    transform: translateX(0);
+}
